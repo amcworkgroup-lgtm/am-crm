@@ -494,9 +494,13 @@ function renderRepairs(){
   }).join(''):`<div style="text-align:center;padding:40px;color:var(--text3)">Ремонтів не знайдено</div>`;
 
   return`
-  <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);max-width:320px">
-    <div class="sc"><div class="sc-l">Активні</div><div class="sc-v blue">${stats.active||0}</div></div>
-    <div class="sc"><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
+  <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);max-width:800px">
+    <div class="sc c-blue"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div><div class="sc-v blue">${stats.active||0}</div></div>
+    <div class="sc c-red"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
+    <div class="sc c-blue"><span class="sc-icon">🔍</span><div class="sc-l">Діагностика</div><div class="sc-v blue">${repairs.filter(r=>r.status==='На діагностиці').length}</div></div>
+    <div class="sc c-amber"><span class="sc-icon">⚙️</span><div class="sc-l">В ремонті</div><div class="sc-v amber">${repairs.filter(r=>r.status==='В ремонті').length}</div></div>
+    <div class="sc c-green"><span class="sc-icon">✅</span><div class="sc-l">Готово</div><div class="sc-v green">${repairs.filter(r=>r.status==='Готово').length}</div></div>
+    <div class="sc"><span class="sc-icon">📦</span><div class="sc-l">Видано</div><div class="sc-v">${repairs.filter(r=>r.status==='Видано').length}</div></div>
   </div>
   <div class="toolbar">
     <input class="inp" style="width:180px" placeholder="Пошук..." value="${searchQ}" oninput="searchQ=this.value;reloadRep()"/>
