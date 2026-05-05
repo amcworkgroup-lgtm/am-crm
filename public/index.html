@@ -1488,20 +1488,6 @@ function deviceClass(type){
   return 'type-other';
 }
 
-// ── OVERRIDE renderRepairs stats ──
-const _origRenderRepairs=renderRepairs;
-function renderRepairs(){
-  let html=_origRenderRepairs();
-  // patch stat cards to add icons and colors
-  html=html
-    .replace('<div class="sc"><div class="sc-l">Активні</div>','<div class="sc c-blue"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div>')
-    .replace('<div class="sc"><div class="sc-l">Активні</div>','<div class="sc c-blue"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div>')
-    .replace('<div class="sc"><div class="sc-l">Прострочено</div>','<div class="sc c-red"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div>')
-    .replace(/class="sc-v blue"/g,'class="sc-v blue"')
-    .replace(/class="sc-v red"/g,'class="sc-v red"');
-  return html;
-}
-
 // ── OVERRIDE toast ──
 function copyText(text){
   navigator.clipboard.writeText(text).then(()=>{
