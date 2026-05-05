@@ -69,6 +69,7 @@ function auth(req, res, next) {
 }
 
 app.post('/api/login', (req, res) => {
+  console.log('LOGIN attempt, ADMIN_PASSWORD:', ADMIN_PASSWORD, 'received:', req.body.password);
   if (req.body.password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Невірний пароль' });
   const token = crypto.randomBytes(32).toString('hex');
   db.prepare('INSERT INTO sessions(token)VALUES(?)').run(token);
