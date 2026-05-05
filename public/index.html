@@ -1177,7 +1177,7 @@ function renderStatsTab(){
       <div style="display:flex;flex-direction:column;gap:7px">${statusCards||'<div style="color:var(--text3);text-align:center;padding:20px">Немає даних</div>'}</div>
       <div style="position:relative;height:160px;margin-top:14px"><canvas id="stats-chart-status"></canvas></div>
     </div>
-  </div>\`;
+  </div>`;
   // Store data in global for charts
   window._statsData = {byMonth, types, statusMap, COLORS};
   return html;
