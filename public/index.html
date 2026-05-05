@@ -1459,14 +1459,6 @@ async function delMaster(id){
   await api('DELETE','/api/masters/'+id);await loadMasters();render();
 }
 
-// ── BOOT ──
-window.onload=()=>{
-  if(TOKEN){
-    document.getElementById('login-screen').style.display='none';
-    const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
-    loadAll();
-  }
-
 // ── THEME ──
 function toggleTheme(){
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
