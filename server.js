@@ -115,7 +115,21 @@ app.put('/api/repairs/:id', auth, (req, res) => {
 });
 
 app.patch('/api/repairs/:id/status', auth, (req, res) => { db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); res.json({ ok:true }); });
-app.patch('/api/repairs/:id/pay', auth, (req, res) => { db.prepare('UPDATE repairs SET pay_status=?,pay_method=? WHERE id=?').run(req.body.pay_status,req.body.pay_method||'',req.params.id); res.json({ ok:true }); });
+app.patch('/api/repairs/:id/pay', auth, (req, res) => {
+  const {pay_status, pay_method} = req.body;
+  const repair = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
+  if(!repair) return res.status(404).json({error:'Not found'});
+  db.prepare('UPDATE repairs SET pay_status=?,pay_method=? WHERE id=?').run(pay_status, pay_method||'', req.params.id);
+  // Автозапис в касу при оплаті
+  if(pay_status === 'Оплачено' && repair.pay_status !== 'Оплачено' && repair.price > 0){
+    const method = pay_method || repair.pay_method || 'Готівка';
+    const date = new Date().toISOString().slice(0,10);
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
+      date, 'in', repair.price, method, `Оплата ${repair.id} (${repair.type} ${repair.model})`
+    );
+  }
+  res.json({ ok:true });
+});
 app.patch('/api/repairs/:id/price', auth, (req, res) => { db.prepare('UPDATE repairs SET price=? WHERE id=?').run(req.body.price||0, req.params.id); res.json({ ok:true }); });
 app.delete('/api/repairs/:id', auth, (req, res) => { db.prepare('DELETE FROM repairs WHERE id=?').run(req.params.id); db.prepare('DELETE FROM repair_comments WHERE repair_id=?').run(req.params.id); res.json({ ok:true }); });
 
