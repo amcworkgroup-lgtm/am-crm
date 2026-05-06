@@ -317,7 +317,7 @@ select{background-color:var(--bg2);color:var(--text)}
 .dash-chart{height:230px}.dash-chart.sm{height:205px}
 .mobile-bottom-nav{display:none}
 @media(max-width:900px){.dash-kpi{grid-template-columns:repeat(2,1fr)}.dash-grid,.dash-grid-2{grid-template-columns:1fr}.dash-chart{height:210px}}
-@media(max-width:600px){body{padding-bottom:72px}.topbar{height:64px}.tnav{display:none}.tright .tlogout{display:none}.main{padding:14px 12px 90px}.dash-head{margin-bottom:14px}.dash-title h1{font-size:28px}.dash-date{display:none}.dash-kpi{grid-template-columns:repeat(2,1fr);gap:10px}.dash-kpi .sc{min-height:116px;padding:14px;align-items:flex-start;flex-direction:column}.dash-kpi .sc-icon{width:44px;height:44px;border-radius:14px;font-size:22px}.dash-kpi .sc-v{font-size:28px}.dash-card{padding:15px;border-radius:16px}.mini-row{grid-template-columns:56px 1fr 70px;gap:8px}.mini-row .mini-device{display:none}.dash-chart{height:190px}.dash-chart.sm{height:180px}.mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg2);border-top:1.5px solid var(--border);padding:8px 6px 10px;z-index:400;box-shadow:0 -8px 22px rgba(0,0,0,.12)}.mbtn{border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.mbtn span{font-size:22px;line-height:1}.mbtn.on{color:var(--orange)}}
+@media(max-width:600px){body{padding-bottom:72px}.topbar{height:64px}.tnav{display:none}.tright .tlogout{display:none}.main{padding:14px 12px 90px}.dash-head{margin-bottom:14px}.dash-title h1{font-size:28px}.dash-date{display:none}.dash-kpi{grid-template-columns:repeat(2,1fr);gap:10px}.dash-kpi .sc{min-height:116px;padding:14px;align-items:flex-start;flex-direction:column}.dash-kpi .sc-icon{width:44px;height:44px;border-radius:14px;font-size:22px}.dash-kpi .sc-v{font-size:28px}.dash-card{padding:15px;border-radius:16px}.mini-row{grid-template-columns:56px 1fr 70px;gap:8px}.mini-row .mini-device{display:none}.dash-chart{height:190px}.dash-chart.sm{height:180px}.mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(6,1fr);background:var(--bg2);border-top:1.5px solid var(--border);padding:8px 4px 10px;z-index:400;box-shadow:0 -8px 22px rgba(0,0,0,.12)}.mbtn{border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:9px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.mbtn span{font-size:20px;line-height:1}.mbtn.on{color:var(--orange)}}
 
 
 
@@ -412,7 +412,8 @@ select{background-color:var(--bg2);color:var(--text)}
     <button class="mbtn on" onclick="go('dashboard')"><span>🏠</span>Dashboard</button>
     <button class="mbtn" onclick="go('repairs')"><span>🛠️</span>Ремонти</button>
     <button class="mbtn" onclick="openNew()"><span>➕</span>Новий</button>
-    <button class="mbtn" onclick="go('clients')"><span>👥</span>Клієнти</button>
+    <button class="mbtn" onclick="go('finance')"><span>💰</span>Фінанси</button>
+    <button class="mbtn" onclick="go('stats')"><span>📊</span>Статистика</button>
     <button class="mbtn" onclick="go('reminders')"><span>⏰</span>Більше</button>
   </div>
 </div>
@@ -490,7 +491,7 @@ async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from
 function go(tab){
   TAB=tab;
   document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','act','stats','settings'][i]===tab));
-  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','new','clients','reminders'][i]===tab));
+  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','new','finance','stats','reminders'][i]===tab));
   if(tab==='clients') loadClients().then(render);
   else if(tab==='finance') Promise.all([loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
   else if(tab==='stats') loadStats().then(render);
