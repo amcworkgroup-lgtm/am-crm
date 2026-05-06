@@ -185,7 +185,8 @@ tr.overdue-row:hover td{background:var(--rdim)}
 .rep-tab{padding:7px 14px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;transition:all .15s;border-radius:0}
 .rep-tab.on{color:var(--orange);border-bottom-color:var(--orange)}
 .rep-tab:hover:not(.on){color:var(--text);background:var(--bg3)}
-.modal{background:var(--bg2);border:1.5px solid var(--border);border-radius:18px;padding:24px;width:100%;max-width:640px;margin:auto;box-shadow:var(--shadow-md)}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;z-index:500;padding:60px 16px 16px;overflow-y:auto}
+.modal{background:var(--bg2);border:1.5px solid var(--border);border-radius:18px;padding:24px;width:100%;max-width:640px;margin:0 auto;box-shadow:var(--shadow-md);position:relative}
 .modal.wide{max-width:800px}
 .modal.sm{max-width:440px}
 .modal h3{font-size:16px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;letter-spacing:-.2px}
@@ -582,7 +583,7 @@ async function openDetail(id){
     <div class="modal wide" style="padding:0;overflow:hidden">
 
       <!-- ШАПКА -->
-      <div style="padding:14px 18px 0;border-bottom:1px solid var(--border)">
+      <div style="padding:14px 18px 0;border-bottom:1px solid var(--border);cursor:move" id="modal-drag-handle">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:16px;font-weight:800">${r.type} ${r.model}</span>
@@ -667,6 +668,44 @@ async function openDetail(id){
     </div>
   </div>`;
   document.getElementById('modal-r').innerHTML=html;
+  const mEl=document.querySelector('#modal-r .modal');
+  if(mEl) makeDraggable(mEl);
+}
+
+// ── DRAGGABLE MODAL ──
+function makeDraggable(modalEl){
+  const handle = modalEl.querySelector('#modal-drag-handle');
+  if(!handle) return;
+  let isDragging=false, startX=0, startY=0, startLeft=0, startTop=0;
+  // Switch modal from flex-center to absolute positioning
+  const ov = modalEl.closest('.modal-ov');
+  handle.addEventListener('mousedown', e=>{
+    if(e.target.closest('button,input,select')) return;
+    isDragging=true;
+    const rect = modalEl.getBoundingClientRect();
+    // First drag: convert from flow to fixed position
+    if(!modalEl.style.left){
+      modalEl.style.position='fixed';
+      modalEl.style.top=rect.top+'px';
+      modalEl.style.left=rect.left+'px';
+      modalEl.style.margin='0';
+      modalEl.style.width=rect.width+'px';
+      if(ov){ ov.style.pointerEvents='none'; ov.style.background='transparent'; ov.style.backdropFilter='none'; }
+    }
+    startX=e.clientX; startY=e.clientY;
+    startLeft=parseInt(modalEl.style.left)||rect.left;
+    startTop=parseInt(modalEl.style.top)||rect.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    const newTop=Math.max(10, startTop+dy);
+    const newLeft=Math.max(10, Math.min(window.innerWidth-200, startLeft+dx));
+    modalEl.style.top=newTop+'px';
+    modalEl.style.left=newLeft+'px';
+  });
+  document.addEventListener('mouseup', ()=>{ isDragging=false; });
 }
 
 function switchRepTab(tab){
