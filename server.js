@@ -21,16 +21,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-function normPayMethod(method) {
-  const m = String(method || '').trim().toLowerCase();
-  if (!m) return 'Не вказано';
-  if (m.includes('гот')) return 'Готівка';
-  if (m.includes('карт') || m.includes('card') || m.includes('pos') || m.includes('термін')) return 'Картка';
-  if (m.includes('пере') || m.includes('iban') || m.includes('mono') || m.includes('privat') || m.includes('приват') || m.includes('банк')) return 'Переказ';
-  return method || 'Інше';
-}
-function toNum(v) { return Number(v) || 0; }
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS repairs (
     id TEXT PRIMARY KEY, date_in TEXT, date_out TEXT, date_plan TEXT,
@@ -79,6 +69,7 @@ function auth(req, res, next) {
 }
 
 app.post('/api/login', (req, res) => {
+  console.log('LOGIN attempt, ADMIN_PASSWORD:', ADMIN_PASSWORD, 'received:', req.body.password);
   if (req.body.password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Невірний пароль' });
   const token = crypto.randomBytes(32).toString('hex');
   db.prepare('INSERT INTO sessions(token)VALUES(?)').run(token);
@@ -125,8 +116,8 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   if(old && r.pay_status === 'Оплачено' && old.pay_status !== 'Оплачено' && r.price > 0){
     const method = r.pay_method || 'Готівка';
     const date = new Date().toISOString().slice(0,10);
-    db.prepare("INSERT INTO cash_log(date,type,amount,method,description,repair_id) VALUES(?,?,?,?,?,?)").run(
-      date, 'in', r.price, method, `Оплата ${req.params.id} (${r.type} ${r.model})`, req.params.id
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
+      date, 'in', r.price, method, `Оплата ${req.params.id} (${r.type} ${r.model})`
     );
   }
   res.json({ ok:true });
@@ -142,8 +133,8 @@ app.patch('/api/repairs/:id/pay', auth, (req, res) => {
   if(pay_status === 'Оплачено' && repair.pay_status !== 'Оплачено' && repair.price > 0){
     const method = pay_method || repair.pay_method || 'Готівка';
     const date = new Date().toISOString().slice(0,10);
-    db.prepare("INSERT INTO cash_log(date,type,amount,method,description,repair_id) VALUES(?,?,?,?,?,?)").run(
-      date, 'in', repair.price, method, `Оплата ${repair.id} (${repair.type} ${repair.model})`, repair.id
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
+      date, 'in', repair.price, method, `Оплата ${repair.id} (${repair.type} ${repair.model})`
     );
   }
   res.json({ ok:true });
@@ -223,111 +214,6 @@ app.get('/api/stats', auth, (req, res) => {
   const byStatus = db.prepare('SELECT status,COUNT(*) as c FROM repairs GROUP BY status').all();
   const byMaster = db.prepare(`SELECT master,COUNT(*) as c,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price-cost ELSE 0 END),0) as profit FROM repairs WHERE master!='' GROUP BY master ORDER BY profit DESC`).all();
   res.json({ active,total,monthRevenue:mRev,monthCost:mCost,monthExpenses:mExp,monthProfit:mRev-mCost-mExp,debt,overdue,cashBalance:cash,cardBalance:card,monthly,byStatus,byMaster });
-});
-
-
-// FINANCE — filtered finance module
-app.get('/api/finance', auth, (req, res) => {
-  const { date_from, date_to, master, method, pay_status } = req.query;
-  const repWhere = [];
-  const repParams = [];
-  if (date_from) { repWhere.push('date_in>=?'); repParams.push(date_from); }
-  if (date_to) { repWhere.push('date_in<=?'); repParams.push(date_to); }
-  if (master) { repWhere.push('master=?'); repParams.push(master); }
-  if (method) { repWhere.push('pay_method=?'); repParams.push(method); }
-  if (pay_status) { repWhere.push('pay_status=?'); repParams.push(pay_status); }
-  const repSQL = ' WHERE ' + (repWhere.length ? repWhere.join(' AND ') : '1=1');
-
-  const payments = db.prepare(`SELECT id,date_in,client,phone,type,model,master,price,cost,pay_status,pay_method,status FROM repairs ${repSQL} ORDER BY date_in DESC, created_at DESC`).all(...repParams);
-
-  const paidPayments = payments.filter(r => r.pay_status === 'Оплачено');
-  const revenue = paidPayments.reduce((s,r)=>s+toNum(r.price),0);
-  const cost = paidPayments.reduce((s,r)=>s+toNum(r.cost),0);
-  const debt = payments.filter(r => r.pay_status !== 'Оплачено').reduce((s,r)=>s+toNum(r.price),0);
-  const avg = paidPayments.length ? Math.round(revenue / paidPayments.length) : 0;
-
-  const methodTotals = {};
-  paidPayments.forEach(r => {
-    const key = normPayMethod(r.pay_method);
-    methodTotals[key] = (methodTotals[key] || 0) + toNum(r.price);
-  });
-  const cashPaid = methodTotals['Готівка'] || 0;
-  const cardPaid = methodTotals['Картка'] || 0;
-  const transferPaid = methodTotals['Переказ'] || 0;
-  const cashlessPaid = cardPaid + transferPaid;
-  const noMethodPaid = methodTotals['Не вказано'] || 0;
-
-  const expWhere = [];
-  const expParams = [];
-  if (date_from) { expWhere.push('e.date>=?'); expParams.push(date_from); }
-  if (date_to) { expWhere.push('e.date<=?'); expParams.push(date_to); }
-  if (master) { expWhere.push('r.master=?'); expParams.push(master); }
-  const expSQL = `SELECT e.* FROM expenses e LEFT JOIN repairs r ON e.repair_id=r.id WHERE ${expWhere.length ? expWhere.join(' AND ') : '1=1'} ORDER BY e.date DESC, e.created_at DESC`;
-  const expenses = db.prepare(expSQL).all(...expParams);
-  const expenseTotal = expenses.reduce((s,e)=>s+toNum(e.amount),0);
-
-  const cashWhere = [];
-  const cashParams = [];
-  if (date_from) { cashWhere.push('c.date>=?'); cashParams.push(date_from); }
-  if (date_to) { cashWhere.push('c.date<=?'); cashParams.push(date_to); }
-  if (method) { cashWhere.push('c.method=?'); cashParams.push(method); }
-  if (master) { cashWhere.push('r.master=?'); cashParams.push(master); }
-  const cashSQL = `SELECT c.* FROM cash_log c LEFT JOIN repairs r ON c.repair_id=r.id WHERE ${cashWhere.length ? cashWhere.join(' AND ') : '1=1'} ORDER BY c.date DESC, c.created_at DESC`;
-  const cashRows = db.prepare(cashSQL).all(...cashParams).map(c => ({...c, method: normPayMethod(c.method)}));
-  const cashLogTotals = {};
-  cashRows.forEach(c => {
-    const key = normPayMethod(c.method);
-    cashLogTotals[key] = (cashLogTotals[key] || 0) + (c.type === 'in' ? toNum(c.amount) : -toNum(c.amount));
-  });
-
-  const dayMap = {};
-  payments.forEach(r => {
-    const d = r.date_in || '—';
-    if (!dayMap[d]) dayMap[d] = { date:d, revenue:0, cost:0, expenses:0, profit:0, count:0, paid:0 };
-    dayMap[d].count += 1;
-    if (r.pay_status === 'Оплачено') {
-      dayMap[d].paid += 1;
-      dayMap[d].revenue += toNum(r.price);
-      dayMap[d].cost += toNum(r.cost);
-    }
-  });
-  expenses.forEach(e => {
-    const d = e.date || '—';
-    if (!dayMap[d]) dayMap[d] = { date:d, revenue:0, cost:0, expenses:0, profit:0, count:0, paid:0 };
-    dayMap[d].expenses += toNum(e.amount);
-  });
-  Object.values(dayMap).forEach(d => d.profit = d.revenue - d.cost - d.expenses);
-  const daily = Object.values(dayMap).sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-31);
-
-  const masterMap = {};
-  payments.forEach(r => {
-    const name = r.master || 'Без майстра';
-    if (!masterMap[name]) masterMap[name] = { master:name, count:0, paidCount:0, revenue:0, cost:0, profit:0 };
-    masterMap[name].count += 1;
-    if (r.pay_status === 'Оплачено') {
-      masterMap[name].paidCount += 1;
-      masterMap[name].revenue += toNum(r.price);
-      masterMap[name].cost += toNum(r.cost);
-    }
-  });
-  Object.values(masterMap).forEach(m => m.profit = m.revenue - m.cost);
-  const byMaster = Object.values(masterMap).sort((a,b)=>b.profit-a.profit);
-
-  const statusTotals = {
-    paid: paidPayments.length,
-    partial: payments.filter(r => r.pay_status === 'Частково').length,
-    unpaid: payments.filter(r => r.pay_status === 'Не оплачено').length
-  };
-
-  res.json({
-    kpi: {
-      revenue, cost, expenses: expenseTotal, profit: revenue - cost - expenseTotal,
-      debt, avg, count: payments.length, paidCount: paidPayments.length,
-      cash: cashPaid, cashless: cashlessPaid, card: cardPaid, transfer: transferPaid, noMethod: noMethodPaid,
-      paidPercent: payments.length ? Math.round((paidPayments.length / payments.length) * 100) : 0
-    },
-    payments, expenses, cashRows, daily, byMaster, methodTotals, cashLogTotals, statusTotals
-  });
 });
 
 // SETTINGS

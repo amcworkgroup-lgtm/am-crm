@@ -254,11 +254,6 @@ tr.overdue-row:hover td{background:var(--rdim)}
 /* ══ TOAST ══ */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 22px;border-radius:24px;font-size:13px;font-weight:700;z-index:9999;font-family:var(--font);box-shadow:var(--shadow-md)}
 
-.fin-filter-panel{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;align-items:end;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
-.fin-filter-panel .frow{gap:5px}
-.finance-kpi{grid-template-columns:repeat(6,1fr)}
-@media(max-width:900px){.fin-filter-panel{grid-template-columns:repeat(2,1fr)}.finance-kpi{grid-template-columns:repeat(2,1fr)!important}}
-
 /* ══ MOBILE ══ */
 @media(max-width:600px){
   .main{padding:12px}
@@ -294,15 +289,6 @@ tr.overdue-row:hover td{background:var(--rdim)}
   .mobile-cards{display:none}
   .desktop-table{display:block}
 }
-
-/* Finance polish */
-.fin-filter-panel{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
-.finance-kpi .cash-card{position:relative;overflow:hidden;min-height:92px}.finance-kpi .cash-card:before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--border2)}
-.finance-kpi .cash-card.f-green:before{background:var(--green)}.finance-kpi .cash-card.f-red:before{background:var(--red)}.finance-kpi .cash-card.f-blue:before{background:var(--blue)}.finance-kpi .cash-card.f-orange:before{background:var(--orange)}.finance-kpi .cash-card.f-purple:before{background:var(--purple)}.finance-kpi .cash-card.f-amber:before{background:var(--amber)}
-.fin-hint{font-size:12px;color:var(--text2);line-height:1.45;margin-top:6px}.fin-alert{background:var(--adim);border:1px solid var(--amber);color:var(--amber);padding:10px 12px;border-radius:12px;margin-bottom:12px;font-size:13px;font-weight:700}
-.fin-mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.fin-mini{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}.fin-mini .l{font-size:11px;color:var(--text2);font-weight:700}.fin-mini .v{font-family:var(--mono);font-size:18px;font-weight:800;margin-top:3px}
-@media(max-width:900px){.fin-filter-panel{grid-template-columns:repeat(2,1fr)}.finance-kpi{grid-template-columns:repeat(2,1fr)!important}.fin-mini-grid{grid-template-columns:repeat(2,1fr)}}
-
 </style>
 </head>
 <body>
@@ -351,9 +337,9 @@ tr.overdue-row:hover td{background:var(--rdim)}
 <script>
 let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='repairs';
-let repairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},financeData=null;
+let repairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]};
 let settings={};
-let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finMethod='',finPayStatus='';
+let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='';
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null;
 
@@ -413,22 +399,13 @@ async function loadSettings(){settings=await api('GET','/api/settings')||{};appl
 async function loadClients(q=''){clients=await api('GET','/api/clients?search='+encodeURIComponent(q))||[];}
 async function loadExpenses(){expenses=await api('GET','/api/expenses?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||[];}
 async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||{rows:[]};}
-async function loadFinance(){
-  const q=new URLSearchParams();
-  if(finFrom)q.set('date_from',finFrom);
-  if(finTo)q.set('date_to',finTo);
-  if(finMaster)q.set('master',finMaster);
-  if(finMethod)q.set('method',finMethod);
-  if(finPayStatus)q.set('pay_status',finPayStatus);
-  financeData=await api('GET','/api/finance?'+q.toString())||null;
-}
 
 // ── NAV ──
 function go(tab){
   TAB=tab;
   document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['repairs','reminders','clients','finance','act','stats','settings'][i]===tab));
   if(tab==='clients') loadClients().then(render);
-  else if(tab==='finance') Promise.all([loadFinance(),loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
+  else if(tab==='finance') Promise.all([loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
   else render();
 }
 
@@ -1023,130 +1000,111 @@ function closeModalC(){const m=document.getElementById('modal-r');if(m)m.innerHT
 // FINANCE TAB
 // ════════════════════════════════
 function renderFinance(){
-  const f = financeData || {kpi:{},payments:[],expenses:[],cashRows:[],daily:[],byMaster:[],methodTotals:{},cashLogTotals:{},statusTotals:{}};
-  const k = f.kpi || {};
-  const payments = f.payments || [];
-  const exp = f.expenses || [];
-  const cashRows = f.cashRows || [];
-  const daily = f.daily || [];
-  const byMaster = f.byMaster || [];
-  const methodTotals = f.methodTotals || {};
-  const cashLogTotals = f.cashLogTotals || {};
-  const statusTotals = f.statusTotals || {};
-
-  const money = v => (Math.round(+v||0)).toLocaleString('uk-UA') + ' ₴';
-  const payBadge = st => st==='Оплачено' ? 'paid' : (st==='Частково' ? 'partial' : 'unpaid');
-  const methodBadge = m => m==='Готівка' ? 'ready' : (m==='Картка' ? 'diag' : (m==='Переказ'?'partial':'issued'));
-  const cashWarn = (+k.noMethod||0)>0 ? `<div class="fin-alert">⚠️ Є оплачені ремонти без методу оплати: ${money(k.noMethod)}. Щоб готівка/безготівка рахувались точно — вкажіть метод у ремонті.</div>` : '';
-
-  const filterPanel = `<div class="fin-filter-panel">
-    <div class="frow"><label>Дата від</label><input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;loadFinance().then(render).then(initCharts)"/></div>
-    <div class="frow"><label>Дата до</label><input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;loadFinance().then(render).then(initCharts)"/></div>
-    <div class="frow"><label>Майстер</label><select class="sel" onchange="finMaster=this.value;loadFinance().then(render).then(initCharts)">
-      <option value="">Всі майстри</option>${masters.map(m=>`<option ${finMaster===m.name?'selected':''}>${m.name}</option>`).join('')}
-    </select></div>
-    <div class="frow"><label>Метод</label><select class="sel" onchange="finMethod=this.value;loadFinance().then(render).then(initCharts)">
-      <option value="">Всі методи</option>${['Готівка','Картка','Переказ'].map(x=>`<option ${finMethod===x?'selected':''}>${x}</option>`).join('')}
-    </select></div>
-    <div class="frow"><label>Оплата</label><select class="sel" onchange="finPayStatus=this.value;loadFinance().then(render).then(initCharts)">
-      <option value="">Всі статуси</option>${['Оплачено','Частково','Не оплачено'].map(x=>`<option ${finPayStatus===x?'selected':''}>${x}</option>`).join('')}
-    </select></div>
-    <div class="frow" style="justify-content:flex-end"><button class="btn" onclick="finFrom='';finTo='';finMaster='';finMethod='';finPayStatus='';loadFinance().then(render).then(initCharts)">Скинути</button></div>
+  const monthly=stats.monthly||[];
+  const filtExp=expenses.filter(e=>{if(finFrom&&e.date<finFrom)return false;if(finTo&&e.date>finTo)return false;return true;});
+  const filtCash=(cash.rows||[]).filter(c=>{if(finFrom&&c.date<finFrom)return false;if(finTo&&c.date>finTo)return false;return true;});
+  const mRows=monthly.map(m=>`<tr>
+    <td style="font-family:var(--mono)">${m.month}</td><td>${m.count}</td>
+    <td style="font-family:var(--mono)">${(+m.revenue).toLocaleString()} ₴</td>
+    <td style="font-family:var(--mono)">${(+m.cost).toLocaleString()} ₴</td>
+    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
+  </tr>`).join('');
+  const expRows=filtExp.length?filtExp.map(e=>`<tr>
+    <td>${e.date}</td><td>${e.category}</td><td>${e.description}</td>
+    <td style="font-family:var(--mono);color:var(--red)">${(+e.amount).toLocaleString()} ₴</td>
+    <td>${e.repair_id||'—'}</td>
+    <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Витрат немає</td></tr>`;
+  const cashRows=filtCash.length?filtCash.map(c=>`<tr>
+    <td>${c.date}</td>
+    <td style="color:${c.type==='in'?'var(--green)':'var(--red)'}">${c.type==='in'?'+':'−'}</td>
+    <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'}">${(+c.amount).toLocaleString()} ₴</td>
+    <td><span class="badge ${c.method==='Готівка'?'ready':'diag'}">${c.method}</span></td>
+    <td>${c.description||'—'}</td>
+  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>`;
+  const byMaster=(stats.byMaster||[]).map(m=>`<tr>
+    <td>${m.master}</td><td>${m.c}</td>
+    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
+  </tr>`).join('');
+  const weekMap={};
+  (cash.rows||[]).forEach(c=>{const d=new Date(c.date);d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};if(c.type==='in')weekMap[wk].in+=(+c.amount||0);else weekMap[wk].out+=(+c.amount||0);});
+  const weekLabels=Object.keys(weekMap).sort().slice(-12);
+  // KPI — якщо є фільтр дат, рахуємо з локальних даних
+  const hasDateFilter = finFrom||finTo;
+  const kpiRevenue = hasDateFilter
+    ? filtCash.filter(c=>c.type==='in').reduce((s,c)=>s+(+c.amount||0),0)
+    : (stats.monthRevenue||0);
+  const kpiExp = hasDateFilter
+    ? filtExp.reduce((s,e)=>s+(+e.amount||0),0)
+    : (stats.monthExpenses||0);
+  const kpiProfit = kpiRevenue - kpiExp;
+  const kpiLabel = hasDateFilter ? 'Виручка (фільтр)' : 'Виручка (міс.)';
+  const kpis=`<div class="cash-cards">
+    <div class="cash-card"><div class="cash-lbl">${kpiLabel}</div><div class="cash-val green">${kpiRevenue.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Витрати${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val red">${kpiExp.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Прибуток${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val amber">${kpiProfit.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
   </div>`;
-
-  const kpis = `<div class="cash-cards finance-kpi">
-    <div class="cash-card f-green"><div class="cash-lbl">Виручка</div><div class="cash-val green">${money(k.revenue)}</div><div class="fin-hint">Оплачені ремонти</div></div>
-    <div class="cash-card f-amber"><div class="cash-lbl">Собівартість</div><div class="cash-val amber">${money(k.cost)}</div><div class="fin-hint">Запчастини/собівартість</div></div>
-    <div class="cash-card f-red"><div class="cash-lbl">Витрати</div><div class="cash-val red">${money(k.expenses)}</div><div class="fin-hint">Окремі витрати</div></div>
-    <div class="cash-card f-orange"><div class="cash-lbl">Чистий прибуток</div><div class="cash-val ${(+k.profit||0)>=0?'green':'red'}">${money(k.profit)}</div><div class="fin-hint">Виручка - собівартість - витрати</div></div>
-    <div class="cash-card f-blue"><div class="cash-lbl">Готівка</div><div class="cash-val blue">${money(k.cash)}</div><div class="fin-hint">По оплатах ремонтів</div></div>
-    <div class="cash-card f-purple"><div class="cash-lbl">Безготівка</div><div class="cash-val purple">${money(k.cashless)}</div><div class="fin-hint">Картка + переказ</div></div>
+  const dateFilter=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    <span style="font-size:12px;color:var(--text2)">Фільтр:</span>
+    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render()" style="width:140px"/>
+    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render()" style="width:140px"/>
+    <button class="btn sm" onclick="finFrom='';finTo='';render()">Скинути</button>
   </div>`;
-
-  const tabs = `<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;overflow:auto">
+  const tabs=`<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
     <button class="rep-tab ${finTab==='overview'?'on':''}" onclick="finTab='overview';render();setTimeout(initCharts,50)">📊 Огляд</button>
-    <button class="rep-tab ${finTab==='history'?'on':''}" onclick="finTab='history';render();setTimeout(initCharts,50)">💳 Платежі</button>
-    <button class="rep-tab ${finTab==='expenses'?'on':''}" onclick="finTab='expenses';render();setTimeout(initCharts,50)">💸 Витрати</button>
-    <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render();setTimeout(initCharts,50)">🏦 Каса</button>
+    <button class="rep-tab ${finTab==='history'?'on':''}" onclick="finTab='history';render();setTimeout(initPayHistory,50)">📈 Платежі</button>
+    <button class="rep-tab ${finTab==='expenses'?'on':''}" onclick="finTab='expenses';render()">💸 Витрати</button>
+    <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render()">🏦 Каса</button>
   </div>`;
-
-  const paymentRows = payments.length ? payments.map(p=>`<tr>
-    <td>${p.date_in||'—'}</td><td><b>${p.client||'—'}</b><div class="tp">${p.phone||''}</div></td>
-    <td>${p.type||''} ${p.model||''}<div class="tp">${p.id}</div></td><td>${p.master||'—'}</td>
-    <td><span class="badge ${methodBadge(p.pay_method)}">${p.pay_method||'Не вказано'}</span></td>
-    <td style="font-family:var(--mono);font-weight:700">${money(p.price)}</td>
-    <td><span class="badge ${payBadge(p.pay_status)}">${p.pay_status||'—'}</span></td>
-  </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Платежів немає за цими фільтрами</td></tr>`;
-
-  const expRows = exp.length ? exp.map(e=>`<tr>
-    <td>${e.date}</td><td>${e.category}</td><td>${e.description||'—'}</td>
-    <td style="font-family:var(--mono);color:var(--red);font-weight:700">−${money(e.amount)}</td>
-    <td>${e.repair_id||'—'}</td><td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
-  </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Витрат немає</td></tr>`;
-
-  const cashTableRows = cashRows.length ? cashRows.map(c=>`<tr>
-    <td>${c.date}</td><td style="color:${c.type==='in'?'var(--green)':'var(--red)'};font-weight:800">${c.type==='in'?'+':'−'}</td>
-    <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'};font-weight:700">${money(c.amount)}</td>
-    <td><span class="badge ${methodBadge(c.method)}">${c.method||'—'}</span></td><td>${c.description||'—'}</td>
-  </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">Рухів коштів немає</td></tr>`;
-
-  const masterRows = byMaster.length ? byMaster.map(m=>`<tr><td>${m.master||'—'}</td><td>${m.count}</td><td>${money(m.revenue)}</td><td style="color:${m.profit>=0?'var(--green)':'var(--red)'};font-family:var(--mono);font-weight:700">${money(m.profit)}</td></tr>`).join('') : `<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3)">Немає даних</td></tr>`;
-
-  const cashSummary = `<div class="fin-mini-grid">
-    <div class="fin-mini"><div class="l">Готівка</div><div class="v" style="color:var(--blue)">${money(k.cash)}</div></div>
-    <div class="fin-mini"><div class="l">Картка</div><div class="v" style="color:var(--purple)">${money(k.card)}</div></div>
-    <div class="fin-mini"><div class="l">Переказ</div><div class="v" style="color:var(--amber)">${money(k.transfer)}</div></div>
-    <div class="fin-mini"><div class="l">Борги</div><div class="v" style="color:var(--red)">${money(k.debt)}</div></div>
-  </div>`;
-
-  window._financeCharts = {
-    dailyLabels: daily.map(x=>x.date),
-    revenue: daily.map(x=>+x.revenue||0),
-    profit: daily.map(x=>+x.profit||0),
-    expenses: daily.map(x=>+x.expenses||0),
-    methodLabels: ['Готівка','Картка','Переказ','Не вказано'].filter(x=>(methodTotals[x]||0)>0),
-    methodData: ['Готівка','Картка','Переказ','Не вказано'].filter(x=>(methodTotals[x]||0)>0).map(x=>methodTotals[x]||0)
-  };
-
   let tabContent='';
-  if(finTab==='overview') tabContent = `${filterPanel}${cashWarn}${kpis}${cashSummary}
+  if(finTab==='overview'){tabContent=`${dateFilter}${kpis}
     <div class="fin-grid">
-      <div class="fin-block"><h4>Виручка / прибуток по днях</h4><div class="chart-wrap"><canvas id="chart-fin-daily"></canvas></div></div>
-      <div class="fin-block"><h4>Методи оплати</h4><div class="chart-wrap"><canvas id="chart-fin-methods"></canvas></div></div>
+      <div class="fin-block"><h4>Прибуток по місяцях</h4><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
+      <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0">
+        <thead><tr><th>Майстер</th><th>Ремонтів</th><th>Прибуток</th></tr></thead>
+        <tbody>${byMaster||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>'}</tbody>
+      </table></div></div>
     </div>
-    <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0"><thead><tr><th>Майстер</th><th>Ремонтів</th><th>Виручка</th><th>Прибуток</th></tr></thead><tbody>${masterRows}</tbody></table></div></div>`;
-  else if(finTab==='history') tabContent = `${filterPanel}${cashWarn}${kpis}<div class="fin-block"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h4 style="margin:0">Платежі</h4><button class="btn sm" onclick="exportFinancePayments()">CSV</button></div><div class="twrap"><table style="min-width:760px"><thead><tr><th>Дата</th><th>Клієнт</th><th>Пристрій</th><th>Майстер</th><th>Метод</th><th>Сума</th><th>Статус</th></tr></thead><tbody>${paymentRows}</tbody></table></div></div>`;
-  else if(finTab==='expenses') tabContent = `${filterPanel}<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:680px"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div>`;
-  else if(finTab==='cash') tabContent = `${filterPanel}${cashSummary}<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Рух коштів</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:620px"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead><tbody>${cashTableRows}</tbody></table></div>`;
-  return `${tabs}${tabContent}<div id="modal-f"></div>`;
+    <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0">
+      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Витрати</th><th>Прибуток</th></tr></thead>
+      <tbody>${mRows}</tbody>
+    </table></div></div>`;}
+  else if(finTab==='history'){
+    const wd=JSON.stringify({labels:weekLabels,in:weekLabels.map(w=>weekMap[w].in),out:weekLabels.map(w=>weekMap[w].out)});
+    tabContent=`${kpis}<div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div><script>window._payWeeks=${wd};<\/script>`;}
+  else if(finTab==='expenses'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;}
+  else if(finTab==='cash'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Рух коштів (каса)</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead><tbody>${cashRows}</tbody></table></div></div>`;}
+  return`${tabs}${tabContent}<div id="modal-f"></div>`;
 }
 
-function exportFinancePayments(){
-  const f=financeData||{payments:[]};
-  const rows=[['Дата','Клієнт','Телефон','Пристрій','Майстер','Метод','Сума','Статус']].concat((f.payments||[]).map(p=>[p.date_in,p.client,p.phone,`${p.type||''} ${p.model||''}`,p.master,p.pay_method,p.price,p.pay_status]));
-  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replaceAll('"','""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download='finance_payments.csv';a.click();
+function initPayHistory(){
+  const ctx=document.getElementById('chart-payhistory');
+  if(!ctx||!window._payWeeks)return;
+  if(window._payChart)window._payChart.destroy();
+  const d=window._payWeeks;
+  window._payChart=new Chart(ctx,{type:'bar',data:{labels:d.labels,datasets:[
+    {label:'Надходження',data:d.in,backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1},
+    {label:'Витрати',data:d.out,backgroundColor:'rgba(239,68,68,.35)',borderColor:'#ef4444',borderWidth:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b9ab5',font:{size:11}}}},scales:{x:{ticks:{color:'#8b9ab5',maxRotation:45}},y:{ticks:{color:'#8b9ab5',callback:v=>v.toLocaleString()+' ₴'}}}}});
 }
-
 function initCharts(){
-  const d=window._financeCharts;
-  if(!d || typeof Chart==='undefined') return;
-  const tickColor=getComputedStyle(document.documentElement).getPropertyValue('--text2').trim()||'#8b9ab5';
-  const gridColor=getComputedStyle(document.documentElement).getPropertyValue('--border').trim()||'#2a3348';
-  const c1=document.getElementById('chart-fin-daily');
-  if(c1){
-    if(window._finDailyChart)window._finDailyChart.destroy();
-    window._finDailyChart=new Chart(c1,{type:'bar',data:{labels:d.dailyLabels,datasets:[
-      {label:'Виручка',data:d.revenue,backgroundColor:'rgba(59,130,246,.45)',borderColor:'#3b82f6',borderWidth:1},
-      {label:'Прибуток',data:d.profit,type:'line',borderColor:'#22c55e',backgroundColor:'transparent',borderWidth:2,tension:.35},
-      {label:'Витрати',data:d.expenses,type:'line',borderColor:'#ef4444',backgroundColor:'transparent',borderWidth:2,tension:.35}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tickColor,font:{size:11}}}},scales:{x:{ticks:{color:tickColor,maxRotation:45},grid:{color:gridColor}},y:{ticks:{color:tickColor,callback:v=>v.toLocaleString()+' ₴'},grid:{color:gridColor}}}}});
-  }
-  const c2=document.getElementById('chart-fin-methods');
-  if(c2){
-    if(window._finMethodsChart)window._finMethodsChart.destroy();
-    window._finMethodsChart=new Chart(c2,{type:'doughnut',data:{labels:d.methodLabels,datasets:[{data:d.methodData,backgroundColor:['#a78bfa','#3b82f6','#f59e0b','#22c55e'],borderWidth:2,borderColor:getComputedStyle(document.documentElement).getPropertyValue('--bg2').trim()}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{labels:{color:tickColor,font:{size:11}}}}}});
-  }
+  const ctx=document.getElementById('chart-monthly');
+  if(!ctx)return;
+  if(window._chart)window._chart.destroy();
+  const monthly=[...(stats.monthly||[])].reverse();
+  window._chart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:monthly.map(m=>m.month),
+      datasets:[
+        {label:'Виручка',data:monthly.map(m=>m.revenue),backgroundColor:'rgba(59,130,246,.5)',borderColor:'#3b82f6',borderWidth:1},
+        {label:'Прибуток',data:monthly.map(m=>m.profit),backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b9ab5',font:{size:11}}}},scales:{x:{ticks:{color:'#8b9ab5'}},y:{ticks:{color:'#8b9ab5',callback:v=>v.toLocaleString()+' ₴'}}}}
+  });
 }
 
 function openAddExpense(){
@@ -1164,9 +1122,9 @@ function openAddExpense(){
 }
 async function saveExpense(){
   await api('POST','/api/expenses',{date:gv('ex-date'),category:gv('ex-cat'),description:gv('ex-desc'),amount:parseFloat(gv('ex-amount'))||0,repair_id:gv('ex-rid')||null});
-  closeModalF();await loadExpenses();await loadFinance();await loadStats();render();setTimeout(initCharts,50);
+  closeModalF();await loadExpenses();await loadStats();render();
 }
-async function delExpense(id){await api('DELETE','/api/expenses/'+id);await loadExpenses();await loadFinance();await loadStats();render();setTimeout(initCharts,50);}
+async function delExpense(id){await api('DELETE','/api/expenses/'+id);await loadExpenses();await loadStats();render();}
 
 function openAddCash(){
   document.getElementById('modal-f').innerHTML=`<div class="modal-ov" onclick="if(event.target===this)closeModalF()">
@@ -1184,7 +1142,7 @@ function openAddCash(){
 }
 async function saveCash(){
   await api('POST','/api/cash',{date:gv('cs-date'),type:gv('cs-type'),amount:parseFloat(gv('cs-amount'))||0,method:gv('cs-method'),description:gv('cs-desc'),repair_id:gv('cs-rid')||null});
-  closeModalF();await loadCash();await loadFinance();await loadStats();render();setTimeout(initCharts,50);
+  closeModalF();await loadCash();await loadStats();render();
 }
 function closeModalF(){const m=document.getElementById('modal-f');if(m)m.innerHTML='';}
 
