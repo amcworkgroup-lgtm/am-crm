@@ -115,6 +115,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
 .sc{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:border-color .15s,transform .1s}
 .sc:hover{transform:translateY(-1px)}
+.compact-row td{padding:4px 10px!important;font-size:12px!important}
+.compact-row .tc{font-size:12px}
+.compact-row .tp{font-size:11px}
 .sc-on{border-color:var(--orange)!important;box-shadow:0 0 0 2px rgba(232,88,10,.25)!important}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
 .sc.c-blue::before{background:var(--blue)}
@@ -336,7 +339,7 @@ let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='repairs';
 let repairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]};
 let settings={};
-let filterStatus='',filterMaster='',searchQ='',sortField='';
+let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='';
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null;
 
@@ -456,14 +459,14 @@ function renderRepairs(){
   // DESKTOP TABLE ROWS
   const tableRows=repairs.length?repairs.map(r=>{
     const ov=r.date_plan&&r.date_plan<today&&!['Готово','Видано'].includes(r.status);
-    return`<tr class="${ov?'overdue-row':''}" onclick="openDetail('${r.id}')" style="cursor:pointer">
+    return`<tr class="${ov?'overdue-row':''} ${compactMode?'compact-row':''}" onclick="openDetail('${r.id}')" style="cursor:pointer">
       <td class="tid">${r.id}</td>
       <td>${r.date_in||'—'}</td>
       <td><div class="tc">${r.client}</div><div class="tp">${r.phone}</div></td>
       <td>${r.type} ${r.model}</td>
       <td onclick="event.stopPropagation()">${statusBadge(r)}</td>
       <td>${r.master||'—'}${ov?'<span class="overdue-dot"></span>':''}</td>
-      <td style="font-family:var(--mono)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</td>
+      <td style="font-family:var(--mono)" ondblclick="editPrice(event,'${r.id}',${r.price||0})" title="Двічі клікніть для редагування">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</td>
       <td onclick="event.stopPropagation()">${payBadge(r)}</td>
       <td><div class="tact" onclick="event.stopPropagation()">
         <button class="btn sm" onclick="openEdit('${r.id}')">Ред.</button>
@@ -520,17 +523,19 @@ function renderRepairs(){
     <input class="inp" type="date" value="${dateFrom}" onchange="dateFrom=this.value;reloadRep()" title="Від"/>
     <input class="inp" type="date" value="${dateTo}" onchange="dateTo=this.value;reloadRep()" title="До"/>
     <button class="btn" onclick="clearFilters()">Скинути</button>
+    <button class="btn ${compactMode?'blue':''}" onclick="compactMode=!compactMode;render()" title="Компактний вид">⊟</button>
     <button class="btn blue" onclick="openNew()">+ Новий</button>
     <a href="/api/export/repairs" style="text-decoration:none"><button class="btn green">↓ CSV</button></a>
   </div>
   <div class="desktop-table twrap">
     <table>
       <thead><tr>
-        <th onclick="setSort('id')">ID</th>
-        <th onclick="setSort('date')">Дата ↕</th>
-        <th>Клієнт</th><th>Пристрій</th><th>Статус</th>
+        <th onclick="setSort('id')" style="cursor:pointer;user-select:none">ID ${sortField==='id'?'↓':''}</th>
+        <th onclick="setSort('date')" style="cursor:pointer;user-select:none">Дата ${sortField==='date'?'↓':'↕'}</th>
+        <th onclick="setSort('client')" style="cursor:pointer;user-select:none">Клієнт ${sortField==='client'?'↓':''}</th>
+        <th>Пристрій</th><th>Статус</th>
         <th>Майстер</th>
-        <th onclick="setSort('price')">Ціна ↕</th>
+        <th onclick="setSort('price')" style="cursor:pointer;user-select:none">Ціна ${sortField==='price'?'↓':'↕'}</th>
         <th>Оплата</th><th></th>
       </tr></thead>
       <tbody>${tableRows}</tbody>
@@ -541,6 +546,23 @@ function renderRepairs(){
 }
 
 function setSort(f){sortField=sortField===f?'':f;reloadRep();}
+
+function editPrice(e, id, currentPrice){
+  e.stopPropagation();
+  const td = e.currentTarget;
+  const orig = td.innerHTML;
+  td.innerHTML = `<input class="inp" type="number" value="${currentPrice||''}" style="width:90px;padding:3px 6px;font-size:12px" 
+    onblur="savePriceInline(this,'${id}')" 
+    onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){this.closest('td').innerHTML='${orig.replace(/'/g,"\'")}';}" />`;
+  const inp = td.querySelector('input');
+  inp.focus();inp.select();
+}
+async function savePriceInline(inp, id){
+  const val = parseFloat(inp.value)||0;
+  await api('PATCH','/api/repairs/'+id+'/price',{price:val});
+  const r=repairs.find(x=>x.id===id);if(r)r.price=val;
+  render();
+}
 function clearFilters(){filterStatus='';filterMaster='';searchQ='';dateFrom='';dateTo='';sortField='';reloadRep();}
 async function reloadRep(){await loadRepairs();await loadStats();render();}
 
@@ -663,8 +685,8 @@ async function openDetail(id){
         <div class="section-title" style="margin-top:14px">Коментарі майстра (внутрішні)</div>
         <div id="comments-list">${cHtml}</div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <input class="inp" id="new-comment" style="flex:1" placeholder="Додати коментар..."/>
-          <button class="btn blue" onclick="addComment('${id}')">Додати</button>
+          <input class="inp" id="new-comment" style="flex:1" placeholder="Додати коментар... (Ctrl+Enter)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){document.getElementById('add-comment-btn').click()}"/>
+          <button class="btn blue" id="add-comment-btn" onclick="addComment('${id}')">Додати</button>
         </div>
       </div>
 
@@ -979,79 +1001,84 @@ function closeModalC(){const m=document.getElementById('modal-r');if(m)m.innerHT
 // ════════════════════════════════
 function renderFinance(){
   const monthly=stats.monthly||[];
+  const filtExp=expenses.filter(e=>{if(finFrom&&e.date<finFrom)return false;if(finTo&&e.date>finTo)return false;return true;});
+  const filtCash=(cash.rows||[]).filter(c=>{if(finFrom&&c.date<finFrom)return false;if(finTo&&c.date>finTo)return false;return true;});
   const mRows=monthly.map(m=>`<tr>
     <td style="font-family:var(--mono)">${m.month}</td><td>${m.count}</td>
     <td style="font-family:var(--mono)">${(+m.revenue).toLocaleString()} ₴</td>
     <td style="font-family:var(--mono)">${(+m.cost).toLocaleString()} ₴</td>
     <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
   </tr>`).join('');
-
-  const expRows=expenses.length?expenses.map(e=>`<tr>
+  const expRows=filtExp.length?filtExp.map(e=>`<tr>
     <td>${e.date}</td><td>${e.category}</td><td>${e.description}</td>
     <td style="font-family:var(--mono);color:var(--red)">${(+e.amount).toLocaleString()} ₴</td>
     <td>${e.repair_id||'—'}</td>
     <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
   </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Витрат немає</td></tr>`;
-
-  const cashRows=cash.rows&&cash.rows.length?cash.rows.map(c=>`<tr>
+  const cashRows=filtCash.length?filtCash.map(c=>`<tr>
     <td>${c.date}</td>
     <td style="color:${c.type==='in'?'var(--green)':'var(--red)'}">${c.type==='in'?'+':'−'}</td>
     <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'}">${(+c.amount).toLocaleString()} ₴</td>
     <td><span class="badge ${c.method==='Готівка'?'ready':'diag'}">${c.method}</span></td>
     <td>${c.description||'—'}</td>
   </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>`;
-
   const byMaster=(stats.byMaster||[]).map(m=>`<tr>
     <td>${m.master}</td><td>${m.c}</td>
     <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
   </tr>`).join('');
-
-  return`
-  <div class="cash-cards">
+  const weekMap={};
+  (cash.rows||[]).forEach(c=>{const d=new Date(c.date);d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};if(c.type==='in')weekMap[wk].in+=(+c.amount||0);else weekMap[wk].out+=(+c.amount||0);});
+  const weekLabels=Object.keys(weekMap).sort().slice(-12);
+  const kpis=`<div class="cash-cards">
     <div class="cash-card"><div class="cash-lbl">Виручка (міс.)</div><div class="cash-val green">${(stats.monthRevenue||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Витрати (міс.)</div><div class="cash-val red">${(stats.monthExpenses||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Прибуток (міс.)</div><div class="cash-val amber">${(stats.monthProfit||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
-  </div>
-  <div class="fin-grid">
-    <div class="fin-block">
-      <h4>Прибуток по місяцях</h4>
-      <div class="chart-wrap"><canvas id="chart-monthly"></canvas></div>
-    </div>
-    <div class="fin-block">
-      <h4>По майстрах</h4>
-      <div class="twrap" style="margin:0"><table style="min-width:0">
+  </div>`;
+  const dateFilter=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    <span style="font-size:12px;color:var(--text2)">Фільтр:</span>
+    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render()" style="width:140px"/>
+    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render()" style="width:140px"/>
+    <button class="btn sm" onclick="finFrom='';finTo='';render()">Скинути</button>
+  </div>`;
+  const tabs=`<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
+    <button class="rep-tab ${finTab==='overview'?'on':''}" onclick="finTab='overview';render();setTimeout(initCharts,50)">📊 Огляд</button>
+    <button class="rep-tab ${finTab==='history'?'on':''}" onclick="finTab='history';render();setTimeout(initPayHistory,50)">📈 Платежі</button>
+    <button class="rep-tab ${finTab==='expenses'?'on':''}" onclick="finTab='expenses';render()">💸 Витрати</button>
+    <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render()">🏦 Каса</button>
+  </div>`;
+  let tabContent='';
+  if(finTab==='overview'){tabContent=`${kpis}
+    <div class="fin-grid">
+      <div class="fin-block"><h4>Прибуток по місяцях</h4><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
+      <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0">
         <thead><tr><th>Майстер</th><th>Ремонтів</th><th>Прибуток</th></tr></thead>
         <tbody>${byMaster||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>'}</tbody>
-      </table></div>
+      </table></div></div>
     </div>
-  </div>
-  <div class="exp-grid">
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="section-title" style="margin:0">Витрати</div>
-        <button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button>
-      </div>
-      <div class="twrap"><table style="min-width:0">
-        <thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead>
-        <tbody>${expRows}</tbody>
-      </table></div>
-    </div>
-    <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="section-title" style="margin:0">Рух коштів (каса)</div>
-        <button class="btn sm blue" onclick="openAddCash()">+ Запис</button>
-      </div>
-      <div class="twrap"><table style="min-width:0">
-        <thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead>
-        <tbody>${cashRows}</tbody>
-      </table></div>
-    </div>
-  </div>
-  <div id="modal-f"></div>`;
+    <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0">
+      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Витрати</th><th>Прибуток</th></tr></thead>
+      <tbody>${mRows}</tbody>
+    </table></div></div>`;}
+  else if(finTab==='history'){
+    const wd=JSON.stringify({labels:weekLabels,in:weekLabels.map(w=>weekMap[w].in),out:weekLabels.map(w=>weekMap[w].out)});
+    tabContent=`${kpis}<div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div><script>window._payWeeks=${wd};<\/script>`;}
+  else if(finTab==='expenses'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;}
+  else if(finTab==='cash'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Рух коштів (каса)</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead><tbody>${cashRows}</tbody></table></div></div>`;}
+  return`${tabs}${tabContent}<div id="modal-f"></div>`;
 }
 
+function initPayHistory(){
+  const ctx=document.getElementById('chart-payhistory');
+  if(!ctx||!window._payWeeks)return;
+  if(window._payChart)window._payChart.destroy();
+  const d=window._payWeeks;
+  window._payChart=new Chart(ctx,{type:'bar',data:{labels:d.labels,datasets:[
+    {label:'Надходження',data:d.in,backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1},
+    {label:'Витрати',data:d.out,backgroundColor:'rgba(239,68,68,.35)',borderColor:'#ef4444',borderWidth:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b9ab5',font:{size:11}}}},scales:{x:{ticks:{color:'#8b9ab5',maxRotation:45}},y:{ticks:{color:'#8b9ab5',callback:v=>v.toLocaleString()+' ₴'}}}}});
+}
 function initCharts(){
   const ctx=document.getElementById('chart-monthly');
   if(!ctx)return;
