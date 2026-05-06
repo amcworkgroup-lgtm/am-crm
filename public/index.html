@@ -1171,87 +1171,176 @@ function closeModalC(){const m=document.getElementById('modal-r');if(m)m.innerHT
 // FINANCE TAB
 // ════════════════════════════════
 function renderFinance(){
-  const monthly=stats.monthly||[];
-  const filtExp=expenses.filter(e=>{if(finFrom&&e.date<finFrom)return false;if(finTo&&e.date>finTo)return false;return true;});
-  const filtCash=(cash.rows||[]).filter(c=>{if(finFrom&&c.date<finFrom)return false;if(finTo&&c.date>finTo)return false;return true;});
-  const mRows=monthly.map(m=>`<tr>
-    <td style="font-family:var(--mono)">${m.month}</td><td>${m.count}</td>
-    <td style="font-family:var(--mono)">${(+m.revenue).toLocaleString()} ₴</td>
-    <td style="font-family:var(--mono)">${(+m.cost).toLocaleString()} ₴</td>
-    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
-  </tr>`).join('');
-  const expRows=filtExp.length?filtExp.map(e=>`<tr>
-    <td>${e.date}</td><td>${e.category}</td><td>${e.description}</td>
-    <td style="font-family:var(--mono);color:var(--red)">${(+e.amount).toLocaleString()} ₴</td>
-    <td>${e.repair_id||'—'}</td>
-    <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
-  </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Витрат немає</td></tr>`;
-  const cashRows=filtCash.length?filtCash.map(c=>`<tr>
-    <td>${c.date}</td>
-    <td style="color:${c.type==='in'?'var(--green)':'var(--red)'}">${c.type==='in'?'+':'−'}</td>
-    <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'}">${(+c.amount).toLocaleString()} ₴</td>
-    <td><span class="badge ${c.method==='Готівка'?'ready':'diag'}">${c.method}</span></td>
-    <td>${c.description||'—'}</td>
-  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>`;
-  const byMaster=(stats.byMaster||[]).map(m=>`<tr>
-    <td>${m.master}</td><td>${m.c}</td>
-    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
-  </tr>`).join('');
-  const weekMap={};
-  (cash.rows||[]).forEach(c=>{const d=new Date(c.date);d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};if(c.type==='in')weekMap[wk].in+=(+c.amount||0);else weekMap[wk].out+=(+c.amount||0);});
-  const weekLabels=Object.keys(weekMap).sort().slice(-12);
-  // KPI — якщо є фільтр дат, рахуємо з локальних даних
-  const hasDateFilter = finFrom||finTo;
-  const periodRepairs = repairs.filter(r=>{
-    if(finFrom && (r.date_in||'')<finFrom) return false;
-    if(finTo && (r.date_in||'')>finTo) return false;
-    return r.pay_status==='Оплачено';
+  const money = v => Number(v || 0);
+  const norm = v => String(v || '').trim();
+  const payDate = r => (r.date_out || r.date_in || r.created_at || '').slice(0,10);
+  const repairLabel = r => `${r.type||''} ${r.model||''}`.trim() || '—';
+  const repairById = new Map((allRepairs||[]).map(r => [r.id, r]));
+  const dateOk = d => (!finFrom || (d||'') >= finFrom) && (!finTo || (d||'') <= finTo);
+  const masterOk = r => !finMaster || (r && norm(r.master) === finMaster);
+  const methodOk = m => !finMethod || norm(m) === finMethod;
+  const payStatusOk = st => !finPayStatus || norm(st) === finPayStatus;
+
+  // Платежі беремо з ремонтів — так видно, звідки саме платіж
+  const paymentRows = (allRepairs||[])
+    .filter(r => money(r.price) > 0)
+    .filter(r => dateOk(payDate(r)))
+    .filter(r => masterOk(r))
+    .filter(r => methodOk(r.pay_method || 'Не вказано'))
+    .filter(r => payStatusOk(r.pay_status || 'Не оплачено'))
+    .sort((a,b) => (payDate(b)||'').localeCompare(payDate(a)||''));
+
+  const paidRows = paymentRows.filter(r => r.pay_status === 'Оплачено');
+  const debtRows = paymentRows.filter(r => r.pay_status !== 'Оплачено');
+
+  const filtExp = (expenses||[]).filter(e=>{
+    if(!dateOk(e.date)) return false;
+    if(finMaster){
+      const rr = repairById.get(e.repair_id||'');
+      return rr && norm(rr.master) === finMaster;
+    }
+    return true;
   });
-  const kpiRevenue = hasDateFilter ? periodRepairs.reduce((s,r)=>s+(+r.price||0),0) : (stats.monthRevenue||0);
-  const kpiCost = hasDateFilter ? periodRepairs.reduce((s,r)=>s+(+r.cost||0),0) : (stats.monthCost||0);
-  const kpiExp = hasDateFilter ? filtExp.reduce((s,e)=>s+(+e.amount||0),0) : (stats.monthExpenses||0);
-  const kpiProfit = kpiRevenue - kpiCost - kpiExp;
-  const kpiLabel = hasDateFilter ? 'Оплачено (фільтр)' : 'Оплачено (міс.)';
+
+  // Ручні касові записи. Автозаписи оплат не дублюємо, бо платежі вже показуємо з ремонтів.
+  const manualCash = (cash.rows||[]).filter(c=>{
+    if(!dateOk(c.date)) return false;
+    if(!methodOk(c.method)) return false;
+    const desc = norm(c.description);
+    if(/^Оплата\s+R/i.test(desc)) return false;
+    if(finMaster){
+      const rr = repairById.get(c.repair_id||'');
+      return rr && norm(rr.master) === finMaster;
+    }
+    return true;
+  });
+
+  const revenue = paidRows.reduce((s,r)=>s+money(r.price),0);
+  const cost = paidRows.reduce((s,r)=>s+money(r.cost),0);
+  const expensesSum = filtExp.reduce((s,e)=>s+money(e.amount),0);
+  const profit = revenue - cost - expensesSum;
+  const debt = debtRows.reduce((s,r)=>s+money(r.price),0);
+  const avgCheck = paidRows.length ? Math.round(revenue / paidRows.length) : 0;
+  const cashIn = paidRows.filter(r => norm(r.pay_method || 'Не вказано') === 'Готівка').reduce((s,r)=>s+money(r.price),0);
+  const cashlessIn = paidRows.filter(r => ['Картка','Переказ','Безготівка'].includes(norm(r.pay_method))).reduce((s,r)=>s+money(r.price),0);
+  const unknownPay = paidRows.filter(r => !norm(r.pay_method)).reduce((s,r)=>s+money(r.price),0);
+
+  const mastersOptions = `<option value="">Всі майстри</option>` + (masters||[]).map(m=>`<option value="${m.name}" ${finMaster===m.name?'selected':''}>${m.name}</option>`).join('');
+  const methodOptions = ['','Готівка','Картка','Переказ','Безготівка','Не вказано'].map(v=>`<option value="${v}" ${finMethod===v?'selected':''}>${v||'Всі методи'}</option>`).join('');
+  const payStatusOptions = ['','Оплачено','Частково','Не оплачено'].map(v=>`<option value="${v}" ${finPayStatus===v?'selected':''}>${v||'Всі оплати'}</option>`).join('');
+
+  const financeFilter = (mode='full') => `<div class="toolbar" style="margin-bottom:14px">
+    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render();setTimeout(initCharts,50)" style="width:150px"/>
+    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render();setTimeout(initCharts,50)" style="width:150px"/>
+    <select class="sel" onchange="finMaster=this.value;render();setTimeout(initCharts,50)" style="width:170px">${mastersOptions}</select>
+    ${mode!=='masterOnly'?`<select class="sel" onchange="finMethod=this.value;render();setTimeout(initCharts,50)" style="width:150px">${methodOptions}</select>`:''}
+    ${mode==='payments'?`<select class="sel" onchange="finPayStatus=this.value;render()" style="width:160px">${payStatusOptions}</select>`:''}
+    <button class="btn sm" onclick="finFrom='';finTo='';finMaster='';finMethod='';finPayStatus='';render();setTimeout(initCharts,50)">Скинути</button>
+  </div>`;
+
   const kpis=`<div class="cash-cards">
-    <div class="cash-card"><div class="cash-lbl">${kpiLabel}</div><div class="cash-val green">${kpiRevenue.toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Собівартість + витрати</div><div class="cash-val red">${(kpiCost+kpiExp).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Прибуток${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val amber">${kpiProfit.toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Оплачено</div><div class="cash-val green">${revenue.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Собівартість + витрати</div><div class="cash-val red">${(cost+expensesSum).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Прибуток</div><div class="cash-val amber">${profit.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${cashIn.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${cashlessIn.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Борг</div><div class="cash-val red">${debt.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Середній чек</div><div class="cash-val blue">${avgCheck.toLocaleString()} ₴</div></div>
   </div>`;
-  const dateFilter=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-    <span style="font-size:12px;color:var(--text2)">Фільтр:</span>
-    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render()" style="width:140px"/>
-    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render()" style="width:140px"/>
-    <button class="btn sm" onclick="finFrom='';finTo='';render()">Скинути</button>
-  </div>`;
+
+  const payRowsHtml = paymentRows.length ? paymentRows.map(r=>{
+    const stClass = PB[r.pay_status] || 'unpaid';
+    const m = norm(r.pay_method) || 'Не вказано';
+    const mClass = m==='Готівка' ? 'ready' : (m==='Не вказано' ? 'unpaid' : 'diag');
+    return `<tr>
+      <td>${payDate(r)||'—'}</td>
+      <td><b>${r.client||'—'}</b><div class="tp">${r.phone||''}</div></td>
+      <td>${repairLabel(r)}<div class="tp">${r.id}</div></td>
+      <td>${r.master||'—'}</td>
+      <td><span class="badge ${mClass}">${m}</span></td>
+      <td><span class="badge ${stClass}">${r.pay_status||'Не оплачено'}</span></td>
+      <td style="font-family:var(--mono);font-weight:800">${money(r.price).toLocaleString()} ₴</td>
+      <td>Ремонт ${r.id}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Платежів не знайдено</td></tr>`;
+
+  const expRows = filtExp.length ? filtExp.map(e=>{
+    const rr = repairById.get(e.repair_id||'');
+    return `<tr>
+      <td>${e.date}</td><td>${e.category}</td><td>${e.description||'—'}</td>
+      <td>${rr?.master||'—'}</td>
+      <td style="font-family:var(--mono);color:var(--red);font-weight:800">${money(e.amount).toLocaleString()} ₴</td>
+      <td>${e.repair_id||'Загальна'}</td>
+      <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Витрат немає</td></tr>`;
+
+  const cashMovements = [];
+  paidRows.forEach(r=>cashMovements.push({date:payDate(r),type:'in',amount:money(r.price),method:norm(r.pay_method)||'Не вказано',master:r.master||'—',source:`Ремонт ${r.id}`,desc:`Оплата: ${r.client||'—'} • ${repairLabel(r)}`}));
+  filtExp.forEach(e=>{
+    const rr = repairById.get(e.repair_id||'');
+    cashMovements.push({date:e.date,type:'out',amount:money(e.amount),method:'Витрата',master:rr?.master||'—',source:e.repair_id?`Ремонт ${e.repair_id}`:'Загальна',desc:`${e.category}: ${e.description||'—'}`});
+  });
+  manualCash.forEach(c=>{
+    const rr = repairById.get(c.repair_id||'');
+    cashMovements.push({date:c.date,type:c.type,amount:money(c.amount),method:c.method||'Готівка',master:rr?.master||'—',source:c.repair_id?`Ремонт ${c.repair_id}`:'Ручний запис',desc:c.description||'—'});
+  });
+  cashMovements.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const cashRowsHtml = cashMovements.length ? cashMovements.map(c=>`<tr>
+    <td>${c.date||'—'}</td>
+    <td style="font-weight:900;color:${c.type==='in'?'var(--green)':'var(--red)'}">${c.type==='in'?'+':'−'}</td>
+    <td style="font-family:var(--mono);font-weight:800;color:${c.type==='in'?'var(--green)':'var(--red)'}">${money(c.amount).toLocaleString()} ₴</td>
+    <td><span class="badge ${c.method==='Готівка'?'ready':(c.method==='Витрата'?'unpaid':'diag')}">${c.method}</span></td>
+    <td>${c.master}</td>
+    <td>${c.source}</td>
+    <td>${c.desc}</td>
+  </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Рухів по касі немає</td></tr>`;
+
+  const byMasterMap = {};
+  paidRows.forEach(r=>{const k=r.master||'Без майстра'; if(!byMasterMap[k])byMasterMap[k]={c:0,revenue:0,profit:0}; byMasterMap[k].c++; byMasterMap[k].revenue+=money(r.price); byMasterMap[k].profit+=money(r.price)-money(r.cost);});
+  const byMaster = Object.entries(byMasterMap).sort((a,b)=>b[1].profit-a[1].profit).map(([master,d])=>`<tr>
+    <td>${master}</td><td>${d.c}</td><td style="font-family:var(--mono);color:var(--green);font-weight:800">${d.revenue.toLocaleString()} ₴</td><td style="font-family:var(--mono);color:${d.profit>=0?'var(--green)':'var(--red)'};font-weight:800">${d.profit.toLocaleString()} ₴</td>
+  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>';
+
+  const monthMap = {};
+  paidRows.forEach(r=>{const k=(payDate(r)||'').slice(0,7)||'Без дати'; if(!monthMap[k])monthMap[k]={count:0,revenue:0,cost:0,expenses:0}; monthMap[k].count++; monthMap[k].revenue+=money(r.price); monthMap[k].cost+=money(r.cost);});
+  filtExp.forEach(e=>{const k=(e.date||'').slice(0,7)||'Без дати'; if(!monthMap[k])monthMap[k]={count:0,revenue:0,cost:0,expenses:0}; monthMap[k].expenses+=money(e.amount);});
+  const monthRows = Object.entries(monthMap).sort((a,b)=>b[0].localeCompare(a[0])).map(([month,d])=>`<tr>
+    <td style="font-family:var(--mono)">${month}</td><td>${d.count}</td><td style="font-family:var(--mono)">${d.revenue.toLocaleString()} ₴</td><td style="font-family:var(--mono)">${d.cost.toLocaleString()} ₴</td><td style="font-family:var(--mono)">${d.expenses.toLocaleString()} ₴</td><td style="font-family:var(--mono);color:${d.revenue-d.cost-d.expenses>=0?'var(--green)':'var(--red)'};font-weight:800">${(d.revenue-d.cost-d.expenses).toLocaleString()} ₴</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>';
+
+  const weekMap={};
+  paidRows.forEach(r=>{const d=new Date(payDate(r)||new Date());d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]=0;weekMap[wk]+=money(r.price);});
+  const weekLabels=Object.keys(weekMap).sort().slice(-12);
+  window._payWeeks={labels:weekLabels,in:weekLabels.map(w=>weekMap[w]||0),out:weekLabels.map(()=>0)};
+  window._financeMonthly={labels:Object.keys(monthMap).sort().slice(-12),revenue:Object.keys(monthMap).sort().slice(-12).map(k=>monthMap[k].revenue),profit:Object.keys(monthMap).sort().slice(-12).map(k=>monthMap[k].revenue-monthMap[k].cost-monthMap[k].expenses)};
+
   const tabs=`<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
     <button class="rep-tab ${finTab==='overview'?'on':''}" onclick="finTab='overview';render();setTimeout(initCharts,50)">📊 Огляд</button>
     <button class="rep-tab ${finTab==='history'?'on':''}" onclick="finTab='history';render();setTimeout(initPayHistory,50)">📈 Платежі</button>
     <button class="rep-tab ${finTab==='expenses'?'on':''}" onclick="finTab='expenses';render()">💸 Витрати</button>
     <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render()">🏦 Каса</button>
   </div>`;
+
   let tabContent='';
-  if(finTab==='overview'){tabContent=`${dateFilter}${kpis}
+  if(finTab==='overview'){
+    tabContent=`${financeFilter('masterOnly')}${kpis}
+    ${unknownPay?`<div style="margin-bottom:12px;padding:10px 14px;border:1px solid var(--amber);background:var(--adim);border-radius:12px;color:var(--amber);font-weight:700">⚠ Є оплати без методу: ${unknownPay.toLocaleString()} ₴. Вкажіть Готівка / Картка / Переказ у ремонті.</div>`:''}
     <div class="fin-grid">
       <div class="fin-block"><h4>Прибуток по місяцях</h4><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
-      <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0">
-        <thead><tr><th>Майстер</th><th>Ремонтів</th><th>Прибуток</th></tr></thead>
-        <tbody>${byMaster||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>'}</tbody>
-      </table></div></div>
+      <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0"><thead><tr><th>Майстер</th><th>Оплат</th><th>Виручка</th><th>Прибуток</th></tr></thead><tbody>${byMaster}</tbody></table></div></div>
     </div>
-    <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0">
-      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Собівартість</th><th>Прибуток</th></tr></thead>
-      <tbody>${mRows}</tbody>
-    </table></div></div>`;}
-  else if(finTab==='history'){
-    const wd=JSON.stringify({labels:weekLabels,in:weekLabels.map(w=>weekMap[w].in),out:weekLabels.map(w=>weekMap[w].out)});
-    tabContent=`${kpis}<div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div><script>window._payWeeks=${wd};<\/script>`;}
-  else if(finTab==='expenses'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;}
-  else if(finTab==='cash'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Рух коштів (каса)</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead><tbody>${cashRows}</tbody></table></div></div>`;}
+    <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0"><thead><tr><th>Місяць</th><th>Оплат</th><th>Виручка</th><th>Собівартість</th><th>Витрати</th><th>Прибуток</th></tr></thead><tbody>${monthRows}</tbody></table></div></div>`;
+  } else if(finTab==='history'){
+    tabContent=`${financeFilter('payments')}${kpis}<div class="fin-block" style="margin-top:16px"><h4>Платежі</h4><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Клієнт</th><th>Звідки платіж</th><th>Майстер</th><th>Метод</th><th>Статус</th><th>Сума</th><th>Джерело</th></tr></thead><tbody>${payRowsHtml}</tbody></table></div></div><div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div>`;
+  } else if(finTab==='expenses'){
+    tabContent=`${financeFilter('masterOnly')}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Майстер</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;
+  } else if(finTab==='cash'){
+    const cashBalance = cashMovements.reduce((s,c)=>s+(c.type==='in'?money(c.amount):-money(c.amount)),0);
+    tabContent=`${financeFilter('full')}${kpis}<div class="cash-cards" style="margin-top:8px"><div class="cash-card"><div class="cash-lbl">Баланс каси по фільтру</div><div class="cash-val ${cashBalance>=0?'green':'red'}">${cashBalance.toLocaleString()} ₴</div></div></div><div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Вся каса: платежі + витрати + ручні записи</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Майстер</th><th>Джерело</th><th>Опис</th></tr></thead><tbody>${cashRowsHtml}</tbody></table></div></div>`;
+  }
   return`${tabs}${tabContent}<div id="modal-f"></div>`;
 }
-
 function initPayHistory(){
   const ctx=document.getElementById('chart-payhistory');
   if(!ctx||!window._payWeeks)return;
@@ -1266,20 +1355,22 @@ function initCharts(){
   const ctx=document.getElementById('chart-monthly');
   if(!ctx)return;
   if(window._chart)window._chart.destroy();
-  const monthly=[...(stats.monthly||[])].reverse();
+  const fm = window._financeMonthly;
+  const labels = fm ? fm.labels : [...(stats.monthly||[])].reverse().map(m=>m.month);
+  const revenue = fm ? fm.revenue : [...(stats.monthly||[])].reverse().map(m=>m.revenue);
+  const profit = fm ? fm.profit : [...(stats.monthly||[])].reverse().map(m=>m.profit);
   window._chart=new Chart(ctx,{
     type:'bar',
     data:{
-      labels:monthly.map(m=>m.month),
+      labels,
       datasets:[
-        {label:'Виручка',data:monthly.map(m=>m.revenue),backgroundColor:'rgba(59,130,246,.5)',borderColor:'#3b82f6',borderWidth:1},
-        {label:'Прибуток',data:monthly.map(m=>m.profit),backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1}
+        {label:'Виручка',data:revenue,backgroundColor:'rgba(59,130,246,.5)',borderColor:'#3b82f6',borderWidth:1},
+        {label:'Прибуток',data:profit,backgroundColor:'rgba(34,197,94,.5)',borderColor:'#22c55e',borderWidth:1}
       ]
     },
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b9ab5',font:{size:11}}}},scales:{x:{ticks:{color:'#8b9ab5'}},y:{ticks:{color:'#8b9ab5',callback:v=>v.toLocaleString()+' ₴'}}}}
   });
 }
-
 function openAddExpense(){
   document.getElementById('modal-f').innerHTML=`<div class="modal-ov" onclick="if(event.target===this)closeModalF()">
     <div class="modal sm"><h3>Нова витрата</h3>
