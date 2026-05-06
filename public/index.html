@@ -317,6 +317,49 @@ tr.overdue-row:hover td{background:var(--rdim)}
 @media(max-width:900px){.dash-kpi{grid-template-columns:repeat(2,1fr)}.dash-grid,.dash-grid-2{grid-template-columns:1fr}.dash-chart{height:210px}}
 @media(max-width:600px){body{padding-bottom:72px}.topbar{height:64px}.tnav{display:none}.tright .tlogout{display:none}.main{padding:14px 12px 90px}.dash-head{margin-bottom:14px}.dash-title h1{font-size:28px}.dash-date{display:none}.dash-kpi{grid-template-columns:repeat(2,1fr);gap:10px}.dash-kpi .sc{min-height:116px;padding:14px;align-items:flex-start;flex-direction:column}.dash-kpi .sc-icon{width:44px;height:44px;border-radius:14px;font-size:22px}.dash-kpi .sc-v{font-size:28px}.dash-card{padding:15px;border-radius:16px}.mini-row{grid-template-columns:56px 1fr 70px;gap:8px}.mini-row .mini-device{display:none}.dash-chart{height:190px}.dash-chart.sm{height:180px}.mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg2);border-top:1.5px solid var(--border);padding:8px 6px 10px;z-index:400;box-shadow:0 -8px 22px rgba(0,0,0,.12)}.mbtn{border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.mbtn span{font-size:22px;line-height:1}.mbtn.on{color:var(--orange)}}
 
+
+
+/* ════════════════════════════════
+   SIDEBAR OVERHAUL — desktop layout like CRM app
+   ════════════════════════════════ */
+@media(min-width:901px){
+  #app{display:none;min-height:100vh;background:var(--bg);}
+  #app.is-ready{display:block!important;}
+  .topbar{
+    position:fixed;left:0;top:0;bottom:0;width:228px;height:100vh!important;
+    padding:18px 12px;background:linear-gradient(180deg,var(--bg2),var(--bg));
+    border-right:1.5px solid var(--border);border-bottom:none;
+    flex-direction:column!important;align-items:stretch!important;z-index:250;box-shadow:var(--shadow-md)
+  }
+  .tlogo{margin:0 0 22px 0!important;padding:8px 8px 18px 8px;border-bottom:1px solid var(--border);gap:12px}
+  .tlogo img{width:76px!important;max-height:68px!important;height:auto!important;object-fit:contain!important;border-radius:0!important;background:transparent!important;flex-shrink:0}
+  .tlogo-text{display:flex!important}.tlogo-main{font-size:17px}.tlogo-sub{font-size:9px;display:block!important}
+  .tnav{height:auto!important;display:flex!important;flex-direction:column;gap:6px;overflow:visible;flex:1;width:100%}
+  .tnav-b{
+    width:100%;height:44px!important;padding:0 12px!important;border:0!important;border-radius:12px;
+    display:flex;align-items:center;gap:10px;text-align:left;font-size:14px;font-weight:700;
+    color:var(--text2);background:transparent;transition:background .15s,color .15s,transform .08s
+  }
+  .tnav-b:hover{background:var(--bg3);color:var(--text);transform:translateX(2px)}
+  .tnav-b.on{background:linear-gradient(90deg,var(--orange-dim),transparent);color:var(--orange);border:1px solid rgba(249,115,22,.22)!important;box-shadow:inset 3px 0 0 var(--orange)}
+  .tright{margin:0!important;padding:14px 0 0 0!important;border-top:1px solid var(--border);display:grid!important;grid-template-columns:1fr;gap:8px;align-items:stretch;width:100%}
+  .overdue-pill{order:-1;text-align:center;padding:7px 8px;border-radius:10px;background:var(--rdim);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+  .theme-toggle{width:100%;height:38px;border-radius:10px;background:var(--bg3)}
+  .tlogout{width:100%;height:38px;border-radius:10px;background:var(--bg3);color:var(--text);font-weight:700}
+  .main{margin-left:228px;max-width:none;width:calc(100% - 228px);padding:24px;min-height:100vh}
+  .main:before{content:'AM Store Service CRM';display:block;color:var(--text3);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+  .mobile-bottom-nav{display:none!important}
+}
+@media(max-width:900px){
+  #app.is-ready{display:flex!important}.topbar{display:flex}.tlogo img{width:42px!important;height:auto!important}
+}
+@media(max-width:600px){
+  .cash-cards{grid-template-columns:repeat(2,1fr)!important}
+  .fin-grid,.exp-grid{grid-template-columns:1fr!important}
+  .stats-kpi-grid{grid-template-columns:repeat(2,1fr)!important}
+  .stats-main-grid{grid-template-columns:1fr!important}
+}
+
 </style>
 </head>
 <body>
@@ -405,7 +448,7 @@ async function doLogin(){
   if(!r.ok){document.getElementById('lerr').textContent=d.error;return;}
   TOKEN=d.token;localStorage.setItem('crm_token',TOKEN);
   document.getElementById('login-screen').style.display='none';
-  const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
+  const app=document.getElementById('app');app.classList.add('is-ready');app.style.display='';app.style.flexDirection='';
   loadAll();
 }
 async function doLogout(){
@@ -1122,17 +1165,22 @@ function renderFinance(){
   const weekLabels=Object.keys(weekMap).sort().slice(-12);
   // KPI — якщо є фільтр дат, рахуємо з локальних даних
   const hasDateFilter = finFrom||finTo;
-  const kpiRevenue = hasDateFilter
-    ? filtCash.filter(c=>c.type==='in').reduce((s,c)=>s+(+c.amount||0),0)
-    : (stats.monthRevenue||0);
-  const kpiExp = hasDateFilter
-    ? filtExp.reduce((s,e)=>s+(+e.amount||0),0)
-    : (stats.monthExpenses||0);
-  const kpiProfit = kpiRevenue - kpiExp;
-  const kpiLabel = hasDateFilter ? 'Виручка (фільтр)' : 'Виручка (міс.)';
+  const periodRepairs = repairs.filter(r=>{
+    if(finFrom && (r.date_in||'')<finFrom) return false;
+    if(finTo && (r.date_in||'')>finTo) return false;
+    return r.pay_status==='Оплачено';
+  });
+  const monthKey = new Date().toISOString().slice(0,7);
+  const monthPaidRepairs = repairs.filter(r=>(r.date_in||'').startsWith(monthKey) && r.pay_status==='Оплачено');
+  const sourceRepairs = hasDateFilter ? periodRepairs : monthPaidRepairs;
+  const kpiRevenue = sourceRepairs.reduce((s,r)=>s+(+r.price||0),0);
+  const kpiCost = sourceRepairs.reduce((s,r)=>s+(+r.cost||0),0);
+  const kpiExp = hasDateFilter ? filtExp.reduce((s,e)=>s+(+e.amount||0),0) : (stats.monthExpenses||0);
+  const kpiProfit = kpiRevenue - kpiCost - kpiExp;
+  const kpiLabel = hasDateFilter ? 'Оплачено (фільтр)' : 'Оплачено (міс.)';
   const kpis=`<div class="cash-cards">
     <div class="cash-card"><div class="cash-lbl">${kpiLabel}</div><div class="cash-val green">${kpiRevenue.toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Витрати${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val red">${kpiExp.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Собівартість + витрати</div><div class="cash-val red">${(kpiCost+kpiExp).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Прибуток${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val amber">${kpiProfit.toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
@@ -1159,7 +1207,7 @@ function renderFinance(){
       </table></div></div>
     </div>
     <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0">
-      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Витрати</th><th>Прибуток</th></tr></thead>
+      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Собівартість</th><th>Прибуток</th></tr></thead>
       <tbody>${mRows}</tbody>
     </table></div></div>`;}
   else if(finTab==='history'){
@@ -1249,51 +1297,49 @@ function renderStatsTab(){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     months.push(d.toISOString().slice(0,7));
   }
+  const paid = r => r.pay_status === 'Оплачено';
   const inPeriod = r => months.includes((r.date_in||'').slice(0,7));
   const filtered = repairs.filter(inPeriod);
+  const paidFiltered = filtered.filter(paid);
 
-  // ── Зведені числа ──
+  // Фінанси в статистиці: рахуємо тільки оплачені ремонти, щоб не завищувати виручку
   const totalRep = filtered.length;
-  const revenue  = filtered.reduce((s,r)=>s+(r.price||0),0);
-  const cost     = filtered.reduce((s,r)=>s+(r.cost||0),0);
-  const profit   = revenue - cost;
-  const avgPrice = totalRep ? Math.round(revenue/totalRep) : 0;
-  const paidCount= filtered.filter(r=>r.pay_status==='Оплачено').length;
+  const revenue  = paidFiltered.reduce((s,r)=>s+(+r.price||0),0);
+  const cost     = paidFiltered.reduce((s,r)=>s+(+r.cost||0),0);
+  const expensesInPeriod = expenses.filter(e=>months.includes((e.date||'').slice(0,7))).reduce((s,e)=>s+(+e.amount||0),0);
+  const profit   = revenue - cost - expensesInPeriod;
+  const avgPrice = paidFiltered.length ? Math.round(revenue/paidFiltered.length) : 0;
+  const paidCount= paidFiltered.length;
   const paidPct  = totalRep ? Math.round(paidCount/totalRep*100) : 0;
 
-  // ── По місяцях ──
   const byMonth = months.map(m=>{
     const mr = repairs.filter(r=>(r.date_in||'').startsWith(m));
-    return {
-      m, count:mr.length,
-      revenue:mr.reduce((s,r)=>s+(r.price||0),0),
-      profit:mr.reduce((s,r)=>s+(r.price||0)-(r.cost||0),0),
-    };
+    const paidMr = mr.filter(paid);
+    const expM = expenses.filter(e=>(e.date||'').startsWith(m)).reduce((s,e)=>s+(+e.amount||0),0);
+    const rev = paidMr.reduce((s,r)=>s+(+r.price||0),0);
+    const cst = paidMr.reduce((s,r)=>s+(+r.cost||0),0);
+    return {m, count:mr.length, revenue:rev, profit:rev-cst-expM};
   });
 
-  // ── По типах ──
   const typeMap={};
-  filtered.forEach(r=>{
-    const t=r.type||'Інше';
-    typeMap[t]=(typeMap[t]||0)+1;
-  });
+  filtered.forEach(r=>{ const t=r.type||'Інше'; typeMap[t]=(typeMap[t]||0)+1; });
   const types=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  const typeTotal=types.reduce((s,[,n])=>s+n,0);
+  const typeTotal=types.reduce((s,[,n])=>s+n,0) || 1;
 
-  // ── По майстрах ──
   const masterMap={};
   filtered.forEach(r=>{
     const m=r.master||'Без майстра';
     if(!masterMap[m]) masterMap[m]={count:0,revenue:0,profit:0};
     masterMap[m].count++;
-    masterMap[m].revenue+=(r.price||0);
-    masterMap[m].profit+=(r.price||0)-(r.cost||0);
+    if(paid(r)){
+      masterMap[m].revenue+=(+r.price||0);
+      masterMap[m].profit+=(+r.price||0)-(+r.cost||0);
+    }
   });
   const masterRows=Object.entries(masterMap).sort((a,b)=>b[1].profit-a[1].profit);
 
-  // ── По статусах ──
   const statusMap={};
-  repairs.forEach(r=>{ statusMap[r.status]=(statusMap[r.status]||0)+1; });
+  repairs.forEach(r=>{ statusMap[r.status||'Без статусу']=(statusMap[r.status||'Без статусу']||0)+1; });
 
   const periodBtns = [
     {v:1,l:'Місяць'},{v:3,l:'3 міс.'},{v:6,l:'6 міс.'},{v:12,l:'Рік'}
@@ -1316,10 +1362,10 @@ function renderStatsTab(){
 
   const masterCards = masterRows.map(([name,d],i)=>`
     <div style="background:var(--bg3);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px">
-      <div style="width:36px;height:36px;border-radius:50%;background:${COLORS[i%COLORS.length]}22;border:2px solid ${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${COLORS[i%COLORS.length]}">${name[0]}</div>
+      <div style="width:36px;height:36px;border-radius:50%;background:${COLORS[i%COLORS.length]}22;border:2px solid ${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${COLORS[i%COLORS.length]}">${(name||'?')[0]}</div>
       <div style="flex:1">
         <div style="font-weight:700;font-size:13px">${name}</div>
-        <div style="font-size:11px;color:var(--text2)">${d.count} рем. · виручка ${d.revenue.toLocaleString()} ₴</div>
+        <div style="font-size:11px;color:var(--text2)">${d.count} рем. · оплачено ${d.revenue.toLocaleString()} ₴</div>
       </div>
       <div style="text-align:right">
         <div style="font-weight:700;font-size:15px;font-family:var(--mono);color:${d.profit>=0?'var(--green)':'var(--red)'}">${d.profit.toLocaleString()} ₴</div>
@@ -1327,44 +1373,43 @@ function renderStatsTab(){
       </div>
     </div>`).join('');
 
-  const statusColors={'На діагностиці':'var(--blue)','В ремонті':'var(--amber)','Готово':'var(--green)','Видано':'var(--text2)'};
+  const statusColors={'На діагностиці':'var(--blue)','В ремонті':'var(--amber)','Готово':'var(--green)','Видано':'var(--text2)','Відмова':'var(--red)','Очікує запчастину':'var(--purple)'};
   const statusCards = Object.entries(statusMap).map(([s,n])=>`
     <div style="background:var(--bg3);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
       <span style="font-size:12px;font-weight:500">${s}</span>
       <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${statusColors[s]||'var(--text)'}">${n}</span>
     </div>`).join('');
 
+  window._statsData = {byMonth, types, statusMap, COLORS};
+
   return`
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-    <div style="font-size:16px;font-weight:700">📊 Статистика</div>
-    <div style="display:flex;gap:6px">${periodBtns}</div>
+    <div style="font-size:16px;font-weight:800">📊 Статистика</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${periodBtns}</div>
   </div>
 
-  <!-- KPI картки -->
-  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px">
+  <div class="stats-kpi-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px">
     <div class="sc c-blue"><span class="sc-icon">🔧</span><div class="sc-l">Ремонтів</div><div class="sc-v blue">${totalRep}</div></div>
-    <div class="sc c-green"><span class="sc-icon">📈</span><div class="sc-l">Виручка</div><div class="sc-v green" style="font-size:15px">${revenue.toLocaleString()} ₴</div></div>
-    <div class="sc c-orange"><span class="sc-icon">💰</span><div class="sc-l">Прибуток</div><div class="sc-v orange" style="font-size:15px">${profit.toLocaleString()} ₴</div></div>
+    <div class="sc c-green"><span class="sc-icon">📈</span><div class="sc-l">Оплачено</div><div class="sc-v green" style="font-size:15px">${revenue.toLocaleString()} ₴</div></div>
+    <div class="sc c-orange"><span class="sc-icon">💰</span><div class="sc-l">Чистий прибуток</div><div class="sc-v orange" style="font-size:15px">${profit.toLocaleString()} ₴</div></div>
     <div class="sc c-purple"><span class="sc-icon">💎</span><div class="sc-l">Середній чек</div><div class="sc-v purple" style="font-size:15px">${avgPrice.toLocaleString()} ₴</div></div>
-    <div class="sc c-amber"><span class="sc-icon">✅</span><div class="sc-l">Оплачено</div><div class="sc-v amber">${paidPct}%</div></div>
+    <div class="sc c-amber"><span class="sc-icon">✅</span><div class="sc-l">Оплачених</div><div class="sc-v amber">${paidPct}%</div></div>
     <div class="sc c-red"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
   </div>
 
-  <!-- Графік і типи -->
-  <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px">
+  <div class="stats-main-grid" style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px">Динаміка по місяцях</div>
-      <div style="position:relative;height:200px"><canvas id="stats-chart-monthly"></canvas></div>
+      <div style="position:relative;height:220px"><canvas id="stats-chart-monthly"></canvas></div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px">Популярні пристрої</div>
       <div style="position:relative;height:160px;margin-bottom:12px"><canvas id="stats-chart-types"></canvas></div>
-      <div>${typeDonut}</div>
+      <div>${typeDonut || '<div style="color:var(--text3);text-align:center;padding:20px">Немає даних</div>'}</div>
     </div>
   </div>
 
-  <!-- Майстри і статуси -->
-  <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px">
+  <div class="stats-main-grid" style="display:grid;grid-template-columns:3fr 2fr;gap:14px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px">Рейтинг майстрів</div>
       <div style="display:flex;flex-direction:column;gap:8px">${masterCards||'<div style="color:var(--text3);text-align:center;padding:20px">Немає даних</div>'}</div>
@@ -1375,9 +1420,6 @@ function renderStatsTab(){
       <div style="position:relative;height:160px;margin-top:14px"><canvas id="stats-chart-status"></canvas></div>
     </div>
   </div>`;
-  // Store data in global for charts
-  window._statsData = {byMonth, types, statusMap, COLORS};
-  return html;
 }
 
 function initStatsCharts(){
@@ -1701,7 +1743,7 @@ window.onload=()=>{
   initTheme();
   if(TOKEN){
     document.getElementById('login-screen').style.display='none';
-    const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
+    const app=document.getElementById('app');app.classList.add('is-ready');app.style.display='';app.style.flexDirection='';
     loadAll();
   }
 };
