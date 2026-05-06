@@ -39,7 +39,7 @@ body{
 /* ── HALF PAGE = верхня половина А4 ── */
 .half{
   width: 210mm;
-  padding: 4mm 6mm;
+  padding: 3mm 5mm;
   overflow: hidden;
   position: relative;
 }
@@ -81,8 +81,8 @@ body{
   display:flex;
   align-items:flex-start;
   gap: 4mm;
-  margin-bottom: 2mm;
-  padding-bottom: 1.5mm;
+  margin-bottom: 1.5mm;
+  padding-bottom: 1mm;
   border-bottom: 1.5px solid #000;
 }
 .logo-block{
@@ -96,7 +96,7 @@ body{
 .logo-svg{ width: 16mm; }
 .logo-sub{ font-size: 4.5pt; font-weight:600; letter-spacing:.5px; line-height:1.3; color:#555; }
 .act-title-block{ flex:1; text-align:center; }
-.act-title{ font-size: 11pt; font-weight:700; letter-spacing:.5px; line-height:1 }
+.act-title{ font-size: 10pt; font-weight:700; letter-spacing:.5px; line-height:1 }
 .act-meta{ margin-left:auto; font-size:6.5pt; white-space:nowrap; text-align:right; line-height:1.8 }
 .act-meta .line-field{ display:inline-block; min-width:28mm; border-bottom:1px solid #000; }
 
@@ -104,8 +104,8 @@ body{
 .act-columns{
   display:grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3mm;
-  margin-bottom: 1.5mm;
+  gap: 2mm;
+  margin-bottom: 1mm;
 }
 .act-section{ }
 .section-title{
@@ -122,12 +122,12 @@ body{
 }
 .section-title svg{ width:8px; height:8px; }
 
-.field-row{ display:flex; align-items:flex-end; gap:1.5mm; margin-bottom:1.3mm; font-size:6.5pt; }
+.field-row{ display:flex; align-items:flex-end; gap:1.5mm; margin-bottom:1mm; font-size:6pt; }
 .field-label{ white-space:nowrap; min-width:fit-content; }
 .field-line{ flex:1; border-bottom:0.75px solid #555; min-width:12mm; }
 
 /* Device type checkboxes */
-.type-row{ display:flex; align-items:center; gap:1.5mm; flex-wrap:wrap; margin-bottom:1.3mm; font-size:6.5pt; }
+.type-row{ display:flex; align-items:center; gap:1.5mm; flex-wrap:wrap; margin-bottom:1mm; font-size:6pt; }
 .cb{ display:inline-flex; align-items:center; gap:1mm; }
 .cb-box{ width:7px; height:7px; border:1px solid #000; display:inline-block; flex-shrink:0; }
 .cb-box.checked{ background:#000; }
@@ -163,41 +163,41 @@ body{
 /* LEFT — ТАЛОН */
 .talon{
   border-right: 1px dashed #999;
-  padding: 3mm 4mm 3mm 4mm;
+  padding: 1.5mm 2.5mm 1.5mm 2.5mm;
 }
-.talon-logo{ margin-bottom:2mm; }
-.talon-logo svg{ width:14mm; }
-.talon-logo-sub{ font-size:4pt; font-weight:600; letter-spacing:.5px; color:#555; margin-top:1mm; text-transform:uppercase; }
-.talon-title{ font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.3px; margin-bottom:2mm; }
-.talon-contacts{ font-size:5.5pt; color:#333; margin-bottom:2mm; line-height:1.6; }
+.talon-logo{ margin-bottom:1mm; }
+.talon-logo svg{ width:11mm; }
+.talon-logo-sub{ font-size:3.5pt; font-weight:600; letter-spacing:.5px; color:#555; margin-top:0.5mm; text-transform:uppercase; }
+.talon-title{ font-size:6pt; font-weight:700; text-transform:uppercase; letter-spacing:.3px; margin-bottom:1mm; }
+.talon-contacts{ font-size:4.5pt; color:#333; margin-bottom:0.8mm; line-height:1.5; }
 .talon-contact-row{ display:flex; align-items:center; gap:1mm; }
-.talon-field{ font-size:6pt; margin-bottom:1.5mm; }
-.talon-field-label{ font-size:5.5pt; color:#555; }
-.talon-field-line{ border-bottom:.75px solid #555; min-height:2.5mm; margin-top:.4mm; }
+.talon-field{ font-size:5pt; margin-bottom:0.7mm; }
+.talon-field-label{ font-size:4.5pt; color:#555; }
+.talon-field-line{ border-bottom:.75px solid #555; min-height:2mm; margin-top:.3mm; }
 .talon-badge{
-  margin-top:2mm;
-  padding:1.5mm 2mm;
+  margin-top:1mm;
+  padding:1mm 2mm;
   border:1px solid #000;
-  border-radius:1.5mm;
-  font-size:5pt;
+  border-radius:1mm;
+  font-size:4.5pt;
   text-align:center;
   font-weight:500;
 }
 
 /* RIGHT — УМОВИ */
 .terms{
-  padding: 4mm 8mm 4mm 5mm;
+  padding: 2mm 5mm 2mm 3mm;
 }
-.terms-title{ font-size:9pt; font-weight:700; margin-bottom:2.5mm; text-transform:uppercase; }
+.terms-title{ font-size:7.5pt; font-weight:700; margin-bottom:1.5mm; text-transform:uppercase; }
 .terms ol{ padding-left:3.5mm; }
 .terms li{
-  font-size:6pt;
-  line-height:1.55;
-  margin-bottom:1.5mm;
+  font-size:5.5pt;
+  line-height:1.45;
+  margin-bottom:1mm;
   color:#1a1a1a;
 }
 .terms li span.sub{ display:block; padding-left:3mm; }
-.terms-sig{ margin-top:3mm; font-size:7pt; font-weight:500; }
+.terms-sig{ margin-top:1.5mm; font-size:6pt; font-weight:500; }
 .terms-sig-line{ display:inline-block; width:45mm; border-bottom:.75px solid #000; }
 
 /* ══ PRINT BUTTON ══ */
@@ -389,7 +389,7 @@ body{
     </div>
     <div class="talon-field">
       <div class="talon-field-label">Опис несправності</div>
-      <div class="talon-field-line" id="talon-problem" style="min-height:8mm">&nbsp;</div>
+      <div class="talon-field-line" id="talon-problem" style="min-height:5mm">&nbsp;</div>
     </div>
 
     <div class="talon-badge">Талон є підтвердженням<br/>прийому пристрою на ремонт</div>
