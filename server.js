@@ -106,11 +106,20 @@ app.post('/api/repairs', auth, (req, res) => {
 
 app.put('/api/repairs/:id', auth, (req, res) => {
   const r = req.body;
+  const old = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
   db.prepare(`UPDATE repairs SET date_in=?,date_out=?,date_plan=?,client=?,phone=?,type=?,model=?,serial=?,password=?,kit=?,problem=?,color=?,status=?,master=?,cost=?,price=?,pay_status=?,pay_method=?,condition=?,notes=?,internal_notes=? WHERE id=?`).run(
     r.date_in,r.date_out||null,r.date_plan||null,r.client,r.phone,r.type,r.model,
     r.serial||'',r.password||'',r.kit||'',r.problem||'',r.color||'',r.status,r.master||'',
     r.cost||0,r.price||0,r.pay_status,r.pay_method||'',r.condition||'',r.notes||'',r.internal_notes||'',req.params.id
   );
+  // Автозапис в касу якщо оплата щойно стала "Оплачено"
+  if(old && r.pay_status === 'Оплачено' && old.pay_status !== 'Оплачено' && r.price > 0){
+    const method = r.pay_method || 'Готівка';
+    const date = new Date().toISOString().slice(0,10);
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
+      date, 'in', r.price, method, `Оплата ${req.params.id} (${r.type} ${r.model})`
+    );
+  }
   res.json({ ok:true });
 });
 
@@ -194,16 +203,16 @@ app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,descr
 app.get('/api/stats', auth, (req, res) => {
   const active = db.prepare("SELECT COUNT(*) as c FROM repairs WHERE status!='Видано'").get().c;
   const total = db.prepare('SELECT COUNT(*) as c FROM repairs').get().c;
-  const mRev = db.prepare(`SELECT COALESCE(SUM(price),0) as v FROM repairs WHERE strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
-  const mCost = db.prepare(`SELECT COALESCE(SUM(cost),0) as v FROM repairs WHERE strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
+  const mRev = db.prepare(`SELECT COALESCE(SUM(price),0) as v FROM repairs WHERE pay_status='Оплачено' AND strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
+  const mCost = db.prepare(`SELECT COALESCE(SUM(cost),0) as v FROM repairs WHERE pay_status='Оплачено' AND strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
   const mExp = db.prepare(`SELECT COALESCE(SUM(amount),0) as v FROM expenses WHERE strftime('%Y-%m',date)=strftime('%Y-%m','now')`).get().v;
   const debt = db.prepare(`SELECT COALESCE(SUM(price),0) as v FROM repairs WHERE pay_status!='Оплачено' AND price>0`).get().v;
   const overdue = db.prepare(`SELECT COUNT(*) as c FROM repairs WHERE date_plan < date('now') AND status NOT IN ('Готово','Видано')`).get().c;
   const cash = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as v FROM cash_log WHERE method='Готівка'").get().v;
   const card = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as v FROM cash_log WHERE method='Картка'").get().v;
-  const monthly = db.prepare(`SELECT strftime('%Y-%m',date_in) as month,COUNT(*) as count,COALESCE(SUM(price),0) as revenue,COALESCE(SUM(cost),0) as cost,COALESCE(SUM(price-cost),0) as profit FROM repairs GROUP BY month ORDER BY month DESC LIMIT 8`).all();
+  const monthly = db.prepare(`SELECT strftime('%Y-%m',date_in) as month,COUNT(*) as count,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price ELSE 0 END),0) as revenue,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN cost ELSE 0 END),0) as cost,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price-cost ELSE 0 END),0) as profit FROM repairs GROUP BY month ORDER BY month DESC LIMIT 8`).all();
   const byStatus = db.prepare('SELECT status,COUNT(*) as c FROM repairs GROUP BY status').all();
-  const byMaster = db.prepare(`SELECT master,COUNT(*) as c,COALESCE(SUM(price-cost),0) as profit FROM repairs WHERE master!='' GROUP BY master ORDER BY profit DESC`).all();
+  const byMaster = db.prepare(`SELECT master,COUNT(*) as c,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price-cost ELSE 0 END),0) as profit FROM repairs WHERE master!='' GROUP BY master ORDER BY profit DESC`).all();
   res.json({ active,total,monthRevenue:mRev,monthCost:mCost,monthExpenses:mExp,monthProfit:mRev-mCost-mExp,debt,overdue,cashBalance:cash,cardBalance:card,monthly,byStatus,byMaster });
 });
 
