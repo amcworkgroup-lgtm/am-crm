@@ -1029,10 +1029,20 @@ function renderFinance(){
   const weekMap={};
   (cash.rows||[]).forEach(c=>{const d=new Date(c.date);d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};if(c.type==='in')weekMap[wk].in+=(+c.amount||0);else weekMap[wk].out+=(+c.amount||0);});
   const weekLabels=Object.keys(weekMap).sort().slice(-12);
+  // KPI — якщо є фільтр дат, рахуємо з локальних даних
+  const hasDateFilter = finFrom||finTo;
+  const kpiRevenue = hasDateFilter
+    ? filtCash.filter(c=>c.type==='in').reduce((s,c)=>s+(+c.amount||0),0)
+    : (stats.monthRevenue||0);
+  const kpiExp = hasDateFilter
+    ? filtExp.reduce((s,e)=>s+(+e.amount||0),0)
+    : (stats.monthExpenses||0);
+  const kpiProfit = kpiRevenue - kpiExp;
+  const kpiLabel = hasDateFilter ? 'Виручка (фільтр)' : 'Виручка (міс.)';
   const kpis=`<div class="cash-cards">
-    <div class="cash-card"><div class="cash-lbl">Виручка (міс.)</div><div class="cash-val green">${(stats.monthRevenue||0).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Витрати (міс.)</div><div class="cash-val red">${(stats.monthExpenses||0).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Прибуток (міс.)</div><div class="cash-val amber">${(stats.monthProfit||0).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">${kpiLabel}</div><div class="cash-val green">${kpiRevenue.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Витрати${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val red">${kpiExp.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Прибуток${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val amber">${kpiProfit.toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
   </div>`;
@@ -1049,7 +1059,7 @@ function renderFinance(){
     <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render()">🏦 Каса</button>
   </div>`;
   let tabContent='';
-  if(finTab==='overview'){tabContent=`${kpis}
+  if(finTab==='overview'){tabContent=`${dateFilter}${kpis}
     <div class="fin-grid">
       <div class="fin-block"><h4>Прибуток по місяцях</h4><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
       <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0">
