@@ -21,6 +21,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
+function normPayMethod(method) {
+  const m = String(method || '').trim().toLowerCase();
+  if (!m) return 'Не вказано';
+  if (m.includes('гот')) return 'Готівка';
+  if (m.includes('карт') || m.includes('card') || m.includes('pos') || m.includes('термін')) return 'Картка';
+  if (m.includes('пере') || m.includes('iban') || m.includes('mono') || m.includes('privat') || m.includes('приват') || m.includes('банк')) return 'Переказ';
+  return method || 'Інше';
+}
+function toNum(v) { return Number(v) || 0; }
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS repairs (
     id TEXT PRIMARY KEY, date_in TEXT, date_out TEXT, date_plan TEXT,
@@ -115,8 +125,8 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   if(old && r.pay_status === 'Оплачено' && old.pay_status !== 'Оплачено' && r.price > 0){
     const method = r.pay_method || 'Готівка';
     const date = new Date().toISOString().slice(0,10);
-    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
-      date, 'in', r.price, method, `Оплата ${req.params.id} (${r.type} ${r.model})`
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description,repair_id) VALUES(?,?,?,?,?,?)").run(
+      date, 'in', r.price, method, `Оплата ${req.params.id} (${r.type} ${r.model})`, req.params.id
     );
   }
   res.json({ ok:true });
@@ -132,8 +142,8 @@ app.patch('/api/repairs/:id/pay', auth, (req, res) => {
   if(pay_status === 'Оплачено' && repair.pay_status !== 'Оплачено' && repair.price > 0){
     const method = pay_method || repair.pay_method || 'Готівка';
     const date = new Date().toISOString().slice(0,10);
-    db.prepare("INSERT INTO cash_log(date,type,amount,method,description) VALUES(?,?,?,?,?)").run(
-      date, 'in', repair.price, method, `Оплата ${repair.id} (${repair.type} ${repair.model})`
+    db.prepare("INSERT INTO cash_log(date,type,amount,method,description,repair_id) VALUES(?,?,?,?,?,?)").run(
+      date, 'in', repair.price, method, `Оплата ${repair.id} (${repair.type} ${repair.model})`, repair.id
     );
   }
   res.json({ ok:true });
@@ -200,79 +210,123 @@ app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,descr
 
 // STATS
 app.get('/api/stats', auth, (req, res) => {
-  const repairs = db.prepare('SELECT * FROM repairs ORDER BY created_at DESC').all();
-  const expenses = db.prepare('SELECT * FROM expenses ORDER BY date DESC').all();
-  const cashRows = db.prepare('SELECT * FROM cash_log ORDER BY date DESC, created_at DESC').all();
+  const active = db.prepare("SELECT COUNT(*) as c FROM repairs WHERE status!='Видано'").get().c;
+  const total = db.prepare('SELECT COUNT(*) as c FROM repairs').get().c;
+  const mRev = db.prepare(`SELECT COALESCE(SUM(price),0) as v FROM repairs WHERE pay_status='Оплачено' AND strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
+  const mCost = db.prepare(`SELECT COALESCE(SUM(cost),0) as v FROM repairs WHERE pay_status='Оплачено' AND strftime('%Y-%m',date_in)=strftime('%Y-%m','now')`).get().v;
+  const mExp = db.prepare(`SELECT COALESCE(SUM(amount),0) as v FROM expenses WHERE strftime('%Y-%m',date)=strftime('%Y-%m','now')`).get().v;
+  const debt = db.prepare(`SELECT COALESCE(SUM(price),0) as v FROM repairs WHERE pay_status!='Оплачено' AND price>0`).get().v;
+  const overdue = db.prepare(`SELECT COUNT(*) as c FROM repairs WHERE date_plan < date('now') AND status NOT IN ('Готово','Видано')`).get().c;
+  const cash = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as v FROM cash_log WHERE method='Готівка'").get().v;
+  const card = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as v FROM cash_log WHERE method='Картка'").get().v;
+  const monthly = db.prepare(`SELECT strftime('%Y-%m',date_in) as month,COUNT(*) as count,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price ELSE 0 END),0) as revenue,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN cost ELSE 0 END),0) as cost,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price-cost ELSE 0 END),0) as profit FROM repairs GROUP BY month ORDER BY month DESC LIMIT 8`).all();
+  const byStatus = db.prepare('SELECT status,COUNT(*) as c FROM repairs GROUP BY status').all();
+  const byMaster = db.prepare(`SELECT master,COUNT(*) as c,COALESCE(SUM(CASE WHEN pay_status='Оплачено' THEN price-cost ELSE 0 END),0) as profit FROM repairs WHERE master!='' GROUP BY master ORDER BY profit DESC`).all();
+  res.json({ active,total,monthRevenue:mRev,monthCost:mCost,monthExpenses:mExp,monthProfit:mRev-mCost-mExp,debt,overdue,cashBalance:cash,cardBalance:card,monthly,byStatus,byMaster });
+});
 
-  const today = new Date().toISOString().slice(0,10);
-  const monthNow = today.slice(0,7);
-  const money = v => Number(v || 0);
-  const repairDate = r => (r.date_in && String(r.date_in).slice(0,10)) || (r.created_at && String(r.created_at).slice(0,10)) || today;
-  const repairMonth = r => repairDate(r).slice(0,7);
-  const isPaid = r => r.pay_status === 'Оплачено';
-  const isIssued = r => r.status === 'Видано';
-  const isReady = r => r.status === 'Готово';
-  const isRefusal = r => ['Відмова','Отказ','Відмовився'].includes(r.status);
 
-  const total = repairs.length;
-  const active = repairs.filter(r => !isIssued(r) && !isRefusal(r)).length;
-  const todayAccepted = repairs.filter(r => repairDate(r) === today).length;
-  const ready = repairs.filter(isReady).length;
-  const inWork = repairs.filter(r => ['В ремонті','В роботі','На діагностиці','Діагностика','Очікує запчастину'].includes(r.status)).length;
-  const refusals = repairs.filter(isRefusal).length;
-  const overdue = repairs.filter(r => r.date_plan && r.date_plan < today && !['Готово','Видано','Відмова','Отказ'].includes(r.status)).length;
-  const notPicked = repairs.filter(r => isReady(r)).length;
+// FINANCE — filtered finance module
+app.get('/api/finance', auth, (req, res) => {
+  const { date_from, date_to, master, method, pay_status } = req.query;
+  const repWhere = [];
+  const repParams = [];
+  if (date_from) { repWhere.push('date_in>=?'); repParams.push(date_from); }
+  if (date_to) { repWhere.push('date_in<=?'); repParams.push(date_to); }
+  if (master) { repWhere.push('master=?'); repParams.push(master); }
+  if (method) { repWhere.push('pay_method=?'); repParams.push(method); }
+  if (pay_status) { repWhere.push('pay_status=?'); repParams.push(pay_status); }
+  const repSQL = ' WHERE ' + (repWhere.length ? repWhere.join(' AND ') : '1=1');
 
-  const paidMonth = repairs.filter(r => isPaid(r) && repairMonth(r) === monthNow);
-  const mRev = paidMonth.reduce((s,r)=>s+money(r.price),0);
-  const mCost = paidMonth.reduce((s,r)=>s+money(r.cost),0);
-  const mExp = expenses.filter(e => (e.date||'').slice(0,7) === monthNow).reduce((s,e)=>s+money(e.amount),0);
-  const debt = repairs.filter(r => r.pay_status !== 'Оплачено' && money(r.price)>0).reduce((s,r)=>s+money(r.price),0);
-  const cash = cashRows.filter(c => c.method === 'Готівка').reduce((s,c)=>s+(c.type==='in'?money(c.amount):-money(c.amount)),0);
-  const card = cashRows.filter(c => ['Картка','Переказ','Безготівка'].includes(c.method)).reduce((s,c)=>s+(c.type==='in'?money(c.amount):-money(c.amount)),0);
+  const payments = db.prepare(`SELECT id,date_in,client,phone,type,model,master,price,cost,pay_status,pay_method,status FROM repairs ${repSQL} ORDER BY date_in DESC, created_at DESC`).all(...repParams);
 
-  const months = [];
-  const now = new Date();
-  for(let i=11;i>=0;i--){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    months.push(d.toISOString().slice(0,7));
-  }
-  const monthly = months.map(month => {
-    const mr = repairs.filter(r => repairMonth(r) === month);
-    const paid = mr.filter(isPaid);
-    const exp = expenses.filter(e => (e.date||'').slice(0,7) === month).reduce((s,e)=>s+money(e.amount),0);
-    const revenue = paid.reduce((s,r)=>s+money(r.price),0);
-    const cost = paid.reduce((s,r)=>s+money(r.cost),0);
-    return { month, count: mr.length, paidCount: paid.length, revenue, cost, expenses: exp, profit: revenue - cost - exp };
-  }).reverse();
+  const paidPayments = payments.filter(r => r.pay_status === 'Оплачено');
+  const revenue = paidPayments.reduce((s,r)=>s+toNum(r.price),0);
+  const cost = paidPayments.reduce((s,r)=>s+toNum(r.cost),0);
+  const debt = payments.filter(r => r.pay_status !== 'Оплачено').reduce((s,r)=>s+toNum(r.price),0);
+  const avg = paidPayments.length ? Math.round(revenue / paidPayments.length) : 0;
 
-  const group = (arr, keyFn, valueFn) => {
-    const m = new Map();
-    arr.forEach(x => {
-      const k = keyFn(x) || 'Інше';
-      if(!m.has(k)) m.set(k, valueFn ? {c:0, revenue:0, profit:0} : 0);
-      if(valueFn){
-        const o = m.get(k); const v = valueFn(x);
-        o.c += 1; o.revenue += v.revenue || 0; o.profit += v.profit || 0;
-      } else m.set(k, m.get(k)+1);
-    });
-    return [...m.entries()];
+  const methodTotals = {};
+  paidPayments.forEach(r => {
+    const key = normPayMethod(r.pay_method);
+    methodTotals[key] = (methodTotals[key] || 0) + toNum(r.price);
+  });
+  const cashPaid = methodTotals['Готівка'] || 0;
+  const cardPaid = methodTotals['Картка'] || 0;
+  const transferPaid = methodTotals['Переказ'] || 0;
+  const cashlessPaid = cardPaid + transferPaid;
+  const noMethodPaid = methodTotals['Не вказано'] || 0;
+
+  const expWhere = [];
+  const expParams = [];
+  if (date_from) { expWhere.push('e.date>=?'); expParams.push(date_from); }
+  if (date_to) { expWhere.push('e.date<=?'); expParams.push(date_to); }
+  if (master) { expWhere.push('r.master=?'); expParams.push(master); }
+  const expSQL = `SELECT e.* FROM expenses e LEFT JOIN repairs r ON e.repair_id=r.id WHERE ${expWhere.length ? expWhere.join(' AND ') : '1=1'} ORDER BY e.date DESC, e.created_at DESC`;
+  const expenses = db.prepare(expSQL).all(...expParams);
+  const expenseTotal = expenses.reduce((s,e)=>s+toNum(e.amount),0);
+
+  const cashWhere = [];
+  const cashParams = [];
+  if (date_from) { cashWhere.push('c.date>=?'); cashParams.push(date_from); }
+  if (date_to) { cashWhere.push('c.date<=?'); cashParams.push(date_to); }
+  if (method) { cashWhere.push('c.method=?'); cashParams.push(method); }
+  if (master) { cashWhere.push('r.master=?'); cashParams.push(master); }
+  const cashSQL = `SELECT c.* FROM cash_log c LEFT JOIN repairs r ON c.repair_id=r.id WHERE ${cashWhere.length ? cashWhere.join(' AND ') : '1=1'} ORDER BY c.date DESC, c.created_at DESC`;
+  const cashRows = db.prepare(cashSQL).all(...cashParams).map(c => ({...c, method: normPayMethod(c.method)}));
+  const cashLogTotals = {};
+  cashRows.forEach(c => {
+    const key = normPayMethod(c.method);
+    cashLogTotals[key] = (cashLogTotals[key] || 0) + (c.type === 'in' ? toNum(c.amount) : -toNum(c.amount));
+  });
+
+  const dayMap = {};
+  payments.forEach(r => {
+    const d = r.date_in || '—';
+    if (!dayMap[d]) dayMap[d] = { date:d, revenue:0, cost:0, expenses:0, profit:0, count:0, paid:0 };
+    dayMap[d].count += 1;
+    if (r.pay_status === 'Оплачено') {
+      dayMap[d].paid += 1;
+      dayMap[d].revenue += toNum(r.price);
+      dayMap[d].cost += toNum(r.cost);
+    }
+  });
+  expenses.forEach(e => {
+    const d = e.date || '—';
+    if (!dayMap[d]) dayMap[d] = { date:d, revenue:0, cost:0, expenses:0, profit:0, count:0, paid:0 };
+    dayMap[d].expenses += toNum(e.amount);
+  });
+  Object.values(dayMap).forEach(d => d.profit = d.revenue - d.cost - d.expenses);
+  const daily = Object.values(dayMap).sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-31);
+
+  const masterMap = {};
+  payments.forEach(r => {
+    const name = r.master || 'Без майстра';
+    if (!masterMap[name]) masterMap[name] = { master:name, count:0, paidCount:0, revenue:0, cost:0, profit:0 };
+    masterMap[name].count += 1;
+    if (r.pay_status === 'Оплачено') {
+      masterMap[name].paidCount += 1;
+      masterMap[name].revenue += toNum(r.price);
+      masterMap[name].cost += toNum(r.cost);
+    }
+  });
+  Object.values(masterMap).forEach(m => m.profit = m.revenue - m.cost);
+  const byMaster = Object.values(masterMap).sort((a,b)=>b.profit-a.profit);
+
+  const statusTotals = {
+    paid: paidPayments.length,
+    partial: payments.filter(r => r.pay_status === 'Частково').length,
+    unpaid: payments.filter(r => r.pay_status === 'Не оплачено').length
   };
 
-  const byStatus = group(repairs, r => r.status || 'Без статусу').map(([status,c])=>({status,c}));
-  const byType = group(repairs, r => r.type || 'Інше').map(([type,c])=>({type,c})).sort((a,b)=>b.c-a.c);
-  const byMaster = group(repairs.filter(r => r.master), r => r.master, r => ({
-    revenue: isPaid(r) ? money(r.price) : 0,
-    profit: isPaid(r) ? money(r.price)-money(r.cost) : 0
-  })).map(([master,d])=>({master,c:d.c,revenue:d.revenue,profit:d.profit})).sort((a,b)=>b.profit-a.profit);
-
   res.json({
-    active,total,todayAccepted,inWork,ready,notPicked,refusals,
-    monthRevenue:mRev,monthCost:mCost,monthExpenses:mExp,monthProfit:mRev-mCost-mExp,
-    debt,overdue,cashBalance:cash,cardBalance:card,
-    monthly,byStatus,byType,byMaster,
-    lastRepairs: repairs.slice(0,8),
-    overdueRepairs: repairs.filter(r => r.date_plan && r.date_plan < today && !['Готово','Видано','Відмова','Отказ'].includes(r.status)).slice(0,8)
+    kpi: {
+      revenue, cost, expenses: expenseTotal, profit: revenue - cost - expenseTotal,
+      debt, avg, count: payments.length, paidCount: paidPayments.length,
+      cash: cashPaid, cashless: cashlessPaid, card: cardPaid, transfer: transferPaid, noMethod: noMethodPaid,
+      paidPercent: payments.length ? Math.round((paidPayments.length / payments.length) * 100) : 0
+    },
+    payments, expenses, cashRows, daily, byMaster, methodTotals, cashLogTotals, statusTotals
   });
 });
 
