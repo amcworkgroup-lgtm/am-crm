@@ -88,7 +88,7 @@ app.get('/api/repairs', auth, (req, res) => {
   if (search) { sql += ' AND (client LIKE ? OR phone LIKE ? OR id LIKE ? OR model LIKE ?)'; const s=`%${search}%`; p.push(s,s,s,s); }
   if (date_from) { sql += ' AND date_in>=?'; p.push(date_from); }
   if (date_to) { sql += ' AND date_in<=?'; p.push(date_to); }
-  sql += ' ORDER BY ' + ({date:'date_in DESC',price:'price DESC',client:'client ASC'}[sort]||'created_at DESC');
+  sql += ' ORDER BY ' + ({date:'date_in DESC',price:'price DESC',client:'client ASC',id:'id DESC'}[sort]||'created_at DESC');
   res.json(db.prepare(sql).all(...p));
 });
 
@@ -116,6 +116,7 @@ app.put('/api/repairs/:id', auth, (req, res) => {
 
 app.patch('/api/repairs/:id/status', auth, (req, res) => { db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); res.json({ ok:true }); });
 app.patch('/api/repairs/:id/pay', auth, (req, res) => { db.prepare('UPDATE repairs SET pay_status=?,pay_method=? WHERE id=?').run(req.body.pay_status,req.body.pay_method||'',req.params.id); res.json({ ok:true }); });
+app.patch('/api/repairs/:id/price', auth, (req, res) => { db.prepare('UPDATE repairs SET price=? WHERE id=?').run(req.body.price||0, req.params.id); res.json({ ok:true }); });
 app.delete('/api/repairs/:id', auth, (req, res) => { db.prepare('DELETE FROM repairs WHERE id=?').run(req.params.id); db.prepare('DELETE FROM repair_comments WHERE repair_id=?').run(req.params.id); res.json({ ok:true }); });
 
 // PHOTOS
