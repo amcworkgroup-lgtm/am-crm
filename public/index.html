@@ -113,7 +113,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 
 /* ══ STATS ══ */
 .stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
-.sc{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:border-color .15s,transform .1s}
+.sc:hover{transform:translateY(-1px)}
+.sc-on{border-color:var(--orange)!important;box-shadow:0 0 0 2px rgba(232,88,10,.25)!important}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
 .sc.c-blue::before{background:var(--blue)}
 .sc.c-green::before{background:var(--green)}
@@ -379,7 +381,8 @@ async function loadAll(){
 }
 async function loadRepairs(){
   let u='/api/repairs?';
-  if(filterStatus)u+='status='+encodeURIComponent(filterStatus)+'&';
+  if(filterStatus && filterStatus!=='__overdue')u+='status='+encodeURIComponent(filterStatus)+'&';
+  if(filterStatus==='__overdue')u+='overdue=1&';
   if(filterMaster)u+='master='+encodeURIComponent(filterMaster)+'&';
   if(searchQ)u+='search='+encodeURIComponent(searchQ)+'&';
   if(dateFrom)u+='date_from='+dateFrom+'&';
@@ -498,12 +501,12 @@ function renderRepairs(){
 
   return`
   <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);max-width:800px">
-    <div class="sc c-blue"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div><div class="sc-v blue">${stats.active||0}</div></div>
-    <div class="sc c-red"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
-    <div class="sc c-blue"><span class="sc-icon">🔍</span><div class="sc-l">Діагностика</div><div class="sc-v blue">${repairs.filter(r=>r.status==='На діагностиці').length}</div></div>
-    <div class="sc c-amber"><span class="sc-icon">⚙️</span><div class="sc-l">В ремонті</div><div class="sc-v amber">${repairs.filter(r=>r.status==='В ремонті').length}</div></div>
-    <div class="sc c-green"><span class="sc-icon">✅</span><div class="sc-l">Готово</div><div class="sc-v green">${repairs.filter(r=>r.status==='Готово').length}</div></div>
-    <div class="sc"><span class="sc-icon">📦</span><div class="sc-l">Видано</div><div class="sc-v">${repairs.filter(r=>r.status==='Видано').length}</div></div>
+    <div class="sc c-blue ${filterStatus===''?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='';reloadRep()"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div><div class="sc-v blue">${stats.active||0}</div></div>
+    <div class="sc c-red ${filterStatus==='__overdue'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='__overdue';reloadRep()"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
+    <div class="sc c-blue ${filterStatus==='На діагностиці'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='На діагностиці';reloadRep()"><span class="sc-icon">🔍</span><div class="sc-l">Діагностика</div><div class="sc-v blue">${repairs.filter(r=>r.status==='На діагностиці').length}</div></div>
+    <div class="sc c-amber ${filterStatus==='В ремонті'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='В ремонті';reloadRep()"><span class="sc-icon">⚙️</span><div class="sc-l">В ремонті</div><div class="sc-v amber">${repairs.filter(r=>r.status==='В ремонті').length}</div></div>
+    <div class="sc c-green ${filterStatus==='Готово'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='Готово';reloadRep()"><span class="sc-icon">✅</span><div class="sc-l">Готово</div><div class="sc-v green">${repairs.filter(r=>r.status==='Готово').length}</div></div>
+    <div class="sc ${filterStatus==='Видано'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='Видано';reloadRep()"><span class="sc-icon">📦</span><div class="sc-l">Видано</div><div class="sc-v">${repairs.filter(r=>r.status==='Видано').length}</div></div>
   </div>
   <div class="toolbar">
     <input class="inp" style="width:180px" placeholder="Пошук..." value="${searchQ}" oninput="searchQ=this.value;reloadRep()"/>
