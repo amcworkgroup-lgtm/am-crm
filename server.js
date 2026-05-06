@@ -80,9 +80,10 @@ app.post('/api/logout', auth, (req, res) => { db.prepare('DELETE FROM sessions W
 
 // REPAIRS
 app.get('/api/repairs', auth, (req, res) => {
-  const { status, search, master, date_from, date_to, sort } = req.query;
+  const { status, search, master, date_from, date_to, sort, overdue } = req.query;
   let sql = 'SELECT * FROM repairs WHERE 1=1'; const p = [];
   if (status) { sql += ' AND status=?'; p.push(status); }
+  if (overdue) { sql += " AND date_plan IS NOT NULL AND date_plan!='' AND date_plan < date('now') AND status NOT IN ('Видано','Готово')"; }
   if (master) { sql += ' AND master=?'; p.push(master); }
   if (search) { sql += ' AND (client LIKE ? OR phone LIKE ? OR id LIKE ? OR model LIKE ?)'; const s=`%${search}%`; p.push(s,s,s,s); }
   if (date_from) { sql += ' AND date_in>=?'; p.push(date_from); }
