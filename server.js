@@ -197,6 +197,7 @@ app.get('/api/cash', auth, (req, res) => {
   res.json({ rows, cash, card, total: cash+card });
 });
 app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,description,repair_id}=req.body; db.prepare('INSERT INTO cash_log(date,type,amount,method,description,repair_id)VALUES(?,?,?,?,?,?)').run(date,type,amount||0,method||'Готівка',description||'',repair_id||null); res.json({ ok:true }); });
+app.delete('/api/cash/:id', auth, (req, res) => { db.prepare('DELETE FROM cash_log WHERE id=?').run(req.params.id); res.json({ ok:true }); });
 
 // STATS
 app.get('/api/stats', auth, (req, res) => {
