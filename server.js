@@ -614,7 +614,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.post('/api/parts/reset', auth, (req, res) => {
   try {
     const before = db.prepare('SELECT COUNT(*) AS c FROM parts').get().c || 0;
-    db.prepare('DELETE FROM stock_movements').run();
+    try { db.prepare('DELETE FROM stock_movements').run(); } catch(e) {}
     db.prepare('DELETE FROM parts').run();
     try { db.prepare('DELETE FROM sqlite_sequence WHERE name=?').run('parts'); } catch(e) {}
     try { db.prepare('DELETE FROM sqlite_sequence WHERE name=?').run('stock_movements'); } catch(e) {}
