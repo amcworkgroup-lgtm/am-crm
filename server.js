@@ -470,7 +470,7 @@ app.post('/api/repairs/:id/parts', auth, (req, res) => {
   if(Number(part.qty||0) < qty) return res.status(400).json({ error:`Недостатньо на складі. Доступно: ${part.qty||0}` });
 
   const unitCost = Number(part.buy_price || 0);
-  const unitPrice = Number(part.sell_price || 0);
+  const unitPrice = Number(req.body.unit_price ?? part.sell_price ?? 0);
   const totalCost = unitCost * qty;
   const totalPrice = unitPrice * qty;
 
