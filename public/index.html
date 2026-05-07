@@ -1496,6 +1496,7 @@ function renderFinance(){
       <td><span class="badge ${isCashMethod(c.method)?'ready':'diag'}">${c.method||'—'}</span></td>
       <td>${c.master||'—'}</td>
       <td>${c.description||'—'} ${c.repair_id?`<span class="tid">${c.repair_id}</span>`:''}</td>
+      <td>${c.source==='manual'&&c.id?`<button class="btn xs red" title="Видалення тільки через пароль адміна" onclick="deleteCashRecord(${c.id})">×</button>`:'—'}</td>
     </tr>`).join('');
     tabContent=`${dateMasterFilter}<div class="cash-cards" style="grid-template-columns:repeat(4,1fr)">
         <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${cashIn.toLocaleString()} ₴</div></div>
@@ -1503,7 +1504,7 @@ function renderFinance(){
         <div class="cash-card"><div class="cash-lbl">Витрати</div><div class="cash-val red">${out.toLocaleString()} ₴</div></div>
         <div class="cash-card"><div class="cash-lbl">Баланс</div><div class="cash-val green">${(cashIn+cardIn-out).toLocaleString()} ₴</div></div>
       </div>
-      <div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Вся каса</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:820px"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Майстер</th><th>Опис</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>'}</tbody></table></div></div>`;
+      <div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Вся каса</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:820px"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Майстер</th><th>Опис</th><th>Дії</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>'}</tbody></table></div></div>`;
   }
   return`${tabs}${tabContent}<div id="modal-f"></div>`;
 }
@@ -1586,6 +1587,15 @@ async function saveCash(){
   closeModalF();await loadCash();await loadStats();render();
 }
 function closeModalF(){const m=document.getElementById('modal-f');if(m)m.innerHTML='';}
+
+async function deleteCashRecord(id){
+  const admin_password = prompt('Видалення запису каси доступне тільки адміну. Введіть пароль адміна:');
+  if(!admin_password)return;
+  if(!confirm('Точно видалити цей запис з каси?'))return;
+  const r = await api('DELETE','/api/cash/'+id,{admin_password});
+  if(r && r.error){alert(r.error);return;}
+  await loadCash();await loadStats();render();
+}
 
 // ════════════════════════════════
 // STATS TAB
