@@ -361,6 +361,67 @@ app.get('/api/backup', auth, (req, res) => {
 });
 
 
+
+// REPAIR PARTS — прив'язка запчастин до ремонту
+function recalcRepairCost(repairId){
+  const row = db.prepare('SELECT COALESCE(SUM(total_cost),0) AS cost FROM repair_parts WHERE repair_id=?').get(repairId);
+  db.prepare('UPDATE repairs SET cost=? WHERE id=?').run(Number(row.cost||0), repairId);
+  return Number(row.cost||0);
+}
+
+app.get('/api/repairs/:id/parts', auth, (req, res) => {
+  const rows = db.prepare('SELECT * FROM repair_parts WHERE repair_id=? ORDER BY created_at DESC, id DESC').all(req.params.id);
+  res.json(rows);
+});
+
+app.post('/api/repairs/:id/parts', auth, (req, res) => {
+  const repair = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
+  if(!repair) return res.status(404).json({ error:'Ремонт не знайдено' });
+
+  const partId = Number(req.body.part_id || 0);
+  const qty = Number(req.body.qty || 1);
+  if(!partId || qty <= 0) return res.status(400).json({ error:'Оберіть запчастину і кількість' });
+
+  const part = db.prepare('SELECT * FROM parts WHERE id=?').get(partId);
+  if(!part) return res.status(404).json({ error:'Запчастину не знайдено' });
+  if(Number(part.qty||0) < qty) return res.status(400).json({ error:`Недостатньо на складі. Доступно: ${part.qty||0}` });
+
+  const unitCost = Number(part.buy_price || 0);
+  const unitPrice = Number(part.sell_price || 0);
+  const totalCost = unitCost * qty;
+  const totalPrice = unitPrice * qty;
+
+  const tx = db.transaction(() => {
+    db.prepare(`INSERT INTO repair_parts(repair_id,part_id,part_name,qty,unit_cost,unit_price,total_cost,total_price)
+      VALUES(?,?,?,?,?,?,?,?)`).run(req.params.id, part.id, part.name, qty, unitCost, unitPrice, totalCost, totalPrice);
+
+    db.prepare('UPDATE parts SET qty=qty-? WHERE id=?').run(qty, part.id);
+    db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
+      .run(part.id, 'out', qty, `Списано на ремонт ${req.params.id}`);
+
+    recalcRepairCost(req.params.id);
+  });
+  tx();
+
+  res.json({ ok:true, cost: recalcRepairCost(req.params.id) });
+});
+
+app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
+  const row = db.prepare('SELECT * FROM repair_parts WHERE id=? AND repair_id=?').get(req.params.rowId, req.params.repairId);
+  if(!row) return res.status(404).json({ error:'Запис не знайдено' });
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE parts SET qty=qty+? WHERE id=?').run(Number(row.qty||0), row.part_id);
+    db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
+      .run(row.part_id, 'in', Number(row.qty||0), `Повернення зі списання ремонту ${req.params.repairId}`);
+    db.prepare('DELETE FROM repair_parts WHERE id=?').run(req.params.rowId);
+    recalcRepairCost(req.params.repairId);
+  });
+  tx();
+
+  res.json({ ok:true, cost: recalcRepairCost(req.params.repairId) });
+});
+
 // WAREHOUSE / PARTS
 app.get('/api/parts', auth, (req, res) => {
   const { search, category, low } = req.query;
