@@ -411,22 +411,6 @@ select{background-color:var(--bg2);color:var(--text)}
 .settings-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.settings-form-grid .full{grid-column:1/-1}
 @media(max-width:900px){.set-grid{grid-template-columns:1fr}.set-row{grid-template-columns:1fr;gap:5px}.set-row.head{display:none}.visual-actions{grid-template-columns:1fr}.bg-presets{grid-template-columns:repeat(2,1fr)}.settings-form-grid{grid-template-columns:1fr}}
 </style>
-
-
-
-
-<style>
-#admin-clear-warehouse-btn{
-  border:1.5px solid rgba(239,68,68,.75)!important;
-  color:#ef4444!important;
-  background:rgba(239,68,68,.10)!important;
-  font-weight:800!important;
-}
-#admin-clear-warehouse-btn:hover{
-  background:rgba(239,68,68,.22)!important;
-}
-</style>
-
 </head>
 <body>
 
@@ -1786,6 +1770,7 @@ function renderWarehouse(){
     <button class="btn green" onclick="document.getElementById('parts-import-file').click()">📥 Імпорт CSV</button>
     <button class="btn" onclick="exportPartsCSV()">📤 Експорт CSV</button>
     <a class="btn" href="/template_apple_parts.csv" download>⬇️ Шаблон Apple</a>
+    <button class="btn red" onclick="clearWarehouseAdmin()">🗑 Очистити склад</button>
     <input id="parts-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="importPartsCSV(this)"/>
   </div>
   <div class="twrap desktop-table"><table><thead><tr>
@@ -1859,6 +1844,25 @@ async function importPartsCSV(input){
   render();
   toast(`Імпортовано: додано ${r.created||0}, оновлено ${r.updated||0}`);
 }
+
+async function clearWarehouseAdmin(){
+  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси НЕ будуть видалені.')) return;
+  if(!confirm('Підтвердіть ще раз: очистити весь склад?')) return;
+
+  const r = await api('POST','/api/parts/reset',{});
+  if(!r || r.error){
+    alert((r && r.error) ? r.error : 'Не вдалося очистити склад');
+    return;
+  }
+
+  stockSearch='';
+  stockCat='';
+  stockLow=false;
+  await loadParts();
+  render();
+  toast('Склад очищено. Видалено позицій: ' + (r.deleted || 0));
+}
+
 function exportPartsCSV(){
   window.open('/api/parts/export','_blank');
 }
@@ -2189,126 +2193,5 @@ window.onload=()=>{
   }
 };
 </script>
-
-
-
-
-<script>
-/* AM Store: forced admin warehouse clear button v2 */
-async function amGetPartsListForClear(token){
-  const endpoints = ['/api/parts', '/api/warehouse'];
-  for(const url of endpoints){
-    try{
-      const r = await fetch(url, {headers:{'x-auth-token':token}});
-      if(!r.ok) continue;
-      const d = await r.json();
-      if(Array.isArray(d)) return d;
-      if(Array.isArray(d.rows)) return d.rows;
-      if(Array.isArray(d.items)) return d.items;
-      if(Array.isArray(d.parts)) return d.parts;
-    }catch(e){}
-  }
-  return [];
-}
-
-async function amDeleteOnePartForClear(token, id){
-  const urls = [
-    '/api/parts/' + encodeURIComponent(id),
-    '/api/warehouse/' + encodeURIComponent(id)
-  ];
-  for(const url of urls){
-    try{
-      const r = await fetch(url, {
-        method:'DELETE',
-        headers:{'x-auth-token':token}
-      });
-      if(r.ok) return true;
-    }catch(e){}
-  }
-  return false;
-}
-
-async function adminClearWarehouse(){
-  const token = localStorage.getItem('crm_token') || '';
-  if(!token){
-    alert('Не авторизовано');
-    return;
-  }
-
-  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси не чіпає.')) return;
-  if(!confirm('Останнє підтвердження: точно очистити склад?')) return;
-
-  // 1) Спочатку пробуємо швидкий серверний reset
-  try{
-    const r = await fetch('/api/parts/reset', {
-      method:'DELETE',
-      headers:{'x-auth-token': token}
-    });
-    if(r.ok){
-      alert('Склад очищено');
-      location.reload();
-      return;
-    }
-  }catch(e){}
-
-  // 2) Якщо reset не спрацював — видаляємо по одній позиції через існуючий API
-  const parts = await amGetPartsListForClear(token);
-  if(!parts.length){
-    alert('Не знайшов позиції складу або API не відповів. Спробуй оновити сторінку і повторити.');
-    return;
-  }
-
-  let ok = 0, fail = 0;
-  for(const p of parts){
-    const id = p.id || p.ID || p._id;
-    if(!id){ fail++; continue; }
-    const deleted = await amDeleteOnePartForClear(token, id);
-    if(deleted) ok++;
-    else fail++;
-  }
-
-  alert('Готово. Видалено: ' + ok + (fail ? '. Не видалено: ' + fail : ''));
-  location.reload();
-}
-
-function forceWarehouseResetButton(){
-  const main = document.getElementById('main');
-  if(!main) return;
-
-  const text = main.innerText || '';
-  const looksWarehouse =
-    text.includes('Позицій') ||
-    text.includes('Запчастина') ||
-    text.includes('Імпорт CSV') ||
-    text.includes('Експорт CSV') ||
-    text.includes('Шаблон Apple') ||
-    text.includes('Склад');
-
-  if(!looksWarehouse) return;
-  if(document.getElementById('admin-clear-warehouse-btn')) return;
-
-  const toolbars = Array.from(main.querySelectorAll('.toolbar'));
-  const toolbar = toolbars.find(x =>
-    (x.innerText || '').includes('Імпорт CSV') ||
-    (x.innerText || '').includes('Запчастина') ||
-    (x.innerText || '').includes('Експорт CSV')
-  ) || toolbars[0];
-
-  if(!toolbar) return;
-
-  const btn = document.createElement('button');
-  btn.id = 'admin-clear-warehouse-btn';
-  btn.className = 'btn red';
-  btn.type = 'button';
-  btn.innerHTML = '🗑 Очистити склад';
-  btn.onclick = adminClearWarehouse;
-  toolbar.appendChild(btn);
-}
-
-setInterval(forceWarehouseResetButton, 500);
-document.addEventListener('click', () => setTimeout(forceWarehouseResetButton, 300));
-window.addEventListener('load', () => setTimeout(forceWarehouseResetButton, 800));
-</script>
-
 </body>
 </html>
