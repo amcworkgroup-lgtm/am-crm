@@ -1076,11 +1076,13 @@ async function openPartToRepairModal(partId){
   const part = parts.find(x=>Number(x.id)===Number(partId));
   if(!part){ toast('Запчастину не знайдено'); return; }
   if(!allRepairs || !allRepairs.length){ await loadAllRepairs(); }
+  const blockedStatuses = ['Готово','Видано','Відмова','Отказ','Відмовився'];
   const active = (allRepairs||[])
-    .filter(r=>!['Видано','Відмова','Отказ','Відмовився'].includes(r.status||''))
+    .filter(r=>!blockedStatuses.includes(String(r.status||'').trim()))
     .sort((a,b)=>String(b.created_at||b.date_in||'').localeCompare(String(a.created_at||a.date_in||'')));
-  const list = active.length ? active : (allRepairs||[]);
-  const options = list.map(r=>`<option value="${r.id}">${r.id} · ${r.client||'Без клієнта'} · ${r.type||''} ${r.model||''} · ${r.status||''}</option>`).join('');
+  const options = active.length
+    ? active.map(r=>`<option value="${r.id}">${r.id} · ${r.client||'Без клієнта'} · ${r.type||''} ${r.model||''} · ${r.status||''}</option>`).join('')
+    : '<option value="" disabled>Немає активних ремонтів</option>';
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-ov" id="part-to-repair-modal" onclick="if(event.target===this)this.remove()">
     <div class="modal sm">
       <h3>↪ Додати запчастину до ремонту</h3>
