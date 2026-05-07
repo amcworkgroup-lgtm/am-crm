@@ -367,8 +367,8 @@ select{background-color:var(--bg2);color:var(--text)}
 
 /* ══ REPAIR PARTS ══ */
 .rp-box{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
-.rp-add{display:grid;grid-template-columns:1fr 90px 120px;gap:8px;align-items:end;margin-bottom:12px}
-.rp-row{display:grid;grid-template-columns:1fr 64px 90px 90px 46px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rp-add{display:grid;grid-template-columns:1fr 90px 120px 120px;gap:8px;align-items:end;margin-bottom:12px}
+.rp-row{display:grid;grid-template-columns:1fr 64px 90px 90px 90px 46px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
 .rp-row:last-child{border-bottom:none}
 .rp-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rp-meta{font-size:11px;color:var(--text2);margin-top:2px}
@@ -859,10 +859,12 @@ async function openDetail(id){
   const sortedStock=[...stockParts].sort((a,b)=>partScore(b)-partScore(a) || String(a.name||'').localeCompare(String(b.name||'')));
   const matchedParts=sortedStock.filter(p=>partScore(p)>=3);
   const otherParts=sortedStock.filter(p=>partScore(p)<3);
-  const opt=p=>`<option value="${p.id}">${p.name} · ${p.category||'Без папки'} · ${p.compatible||'—'} · залишок ${p.qty||0} · закуп ${(Number(p.buy_price||0)).toLocaleString()} ₴</option>`;
+  const opt=p=>`<option value="${p.id}" data-sell="${Number(p.sell_price||0)}" data-buy="${Number(p.buy_price||0)}">${p.name} · ${p.category||'Без папки'} · ${p.compatible||'—'} · залишок ${p.qty||0} · закуп ${(Number(p.buy_price||0)).toLocaleString()} ₴ · продаж ${(Number(p.sell_price||0)).toLocaleString()} ₴</option>`;
   const partsOptions=(matchedParts.length?`<optgroup label="Підходить під ${r.type||''} ${r.model||''}">${matchedParts.map(opt).join('')}</optgroup>`:'')+
     (otherParts.length?`<optgroup label="Інші запчастини зі складу">${otherParts.map(opt).join('')}</optgroup>`:'');
   const usedPartsCost=usedParts.reduce((a,p)=>a+Number(p.total_cost||0),0);
+  const usedPartsSell=usedParts.reduce((a,p)=>a+Number(p.total_price||0),0);
+  const usedPartsProfit=usedPartsSell-usedPartsCost;
   const usedPartsHtml=usedParts.length?usedParts.map(p=>`
     <div class="rp-row">
       <div>
@@ -871,7 +873,8 @@ async function openDetail(id){
       </div>
       <div class="rp-num">${p.qty} шт</div>
       <div class="rp-num hide-mob">${Number(p.unit_cost||0).toLocaleString()} ₴</div>
-      <div class="rp-num hide-mob">${Number(p.total_cost||0).toLocaleString()} ₴</div>
+      <div class="rp-num hide-mob">${Number(p.unit_price||0).toLocaleString()} ₴</div>
+      <div class="rp-num hide-mob">${Number(p.total_price||0).toLocaleString()} ₴</div>
       <button class="btn xs red" onclick="deleteRepairPart('${id}',${p.id})">✕</button>
     </div>`).join(''):`<div style="color:var(--text3);font-size:12px;padding:12px 0">До ремонту ще не привʼязано запчастин</div>`;
 
@@ -937,7 +940,7 @@ async function openDetail(id){
               Майстер: <b>${r.master||'—'}</b><br>
               Прийнято: <b>${r.date_in||'—'}</b>${r.date_plan?` · Планово: <b style="color:${ov?'var(--red)':'var(--amber)'}">${r.date_plan}</b>`:''}<br>
               Ціна: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}<br>
-              Собівартість запчастин: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Прибуток: <b style="color:var(--green)">${((Number(r.price||0)-usedPartsCost)).toLocaleString()} ₴</b>
+              Собівартість запчастин: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Продаж запчастин: <b style="color:var(--blue)">${usedPartsSell.toLocaleString()} ₴</b> · Прибуток запчастин: <b style="color:var(--green)">${usedPartsProfit.toLocaleString()} ₴</b>
             </div>
             ${r.internal_notes?`<div style="margin-top:4px;color:var(--amber);font-size:11px">📋 ${r.internal_notes}</div>`:''}
           </div>
@@ -956,21 +959,25 @@ async function openDetail(id){
               <div style="font-weight:800;font-size:14px">Запчастини в ремонті</div>
               <div style="font-size:12px;color:var(--text2)">Після додавання запчастина автоматично списується зі складу, а собівартість ремонту оновлюється.</div>
             </div>
-            <div style="font-family:var(--mono);font-weight:800;color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</div>
+            <div style="font-family:var(--mono);font-weight:800;color:var(--amber)">Закуп: ${usedPartsCost.toLocaleString()} ₴ · Продаж: ${usedPartsSell.toLocaleString()} ₴</div>
           </div>
           <div class="rp-add">
             <div>
               <label style="font-size:11px;color:var(--text2);font-weight:700">Запчастина зі складу</label>
-              <select class="sel" id="repair-part-select" style="width:100%;margin-top:5px"><option value="">Оберіть запчастину</option>${partsOptions}</select>
+              <select class="sel" id="repair-part-select" style="width:100%;margin-top:5px" onchange="fillRepairPartSellPrice()"><option value="">Оберіть запчастину</option>${partsOptions}</select>
             </div>
             <div>
               <label style="font-size:11px;color:var(--text2);font-weight:700">К-сть</label>
               <input class="inp" id="repair-part-qty" type="number" min="1" value="1" style="width:100%;margin-top:5px"/>
             </div>
+            <div>
+              <label style="font-size:11px;color:var(--text2);font-weight:700">Продаж / шт</label>
+              <input class="inp" id="repair-part-sell" type="number" min="0" value="0" style="width:100%;margin-top:5px"/>
+            </div>
             <button class="btn orange" onclick="addRepairPart('${id}')">+ Додати</button>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 64px 90px 90px 46px;gap:8px;color:var(--text2);font-size:10px;font-weight:800;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:7px">
-            <div>Назва</div><div>К-сть</div><div class="hide-mob">Закуп</div><div class="hide-mob">Разом</div><div></div>
+          <div style="display:grid;grid-template-columns:1fr 64px 90px 90px 90px 46px;gap:8px;color:var(--text2);font-size:10px;font-weight:800;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:7px">
+            <div>Назва</div><div>К-сть</div><div class="hide-mob">Закуп</div><div class="hide-mob">Продаж</div><div class="hide-mob">Разом</div><div></div>
           </div>
           ${usedPartsHtml}
         </div>
@@ -1014,11 +1021,19 @@ async function openDetail(id){
 }
 
 
+function fillRepairPartSellPrice(){
+  const sel=document.getElementById('repair-part-select');
+  const opt=sel?.selectedOptions?.[0];
+  const inp=document.getElementById('repair-part-sell');
+  if(inp && opt) inp.value=Number(opt.dataset.sell||0);
+}
+
 async function addRepairPart(repairId){
   const part_id=document.getElementById('repair-part-select')?.value;
   const qty=parseFloat(document.getElementById('repair-part-qty')?.value)||1;
+  const unit_price=parseFloat(document.getElementById('repair-part-sell')?.value)||0;
   if(!part_id){toast('Оберіть запчастину');return;}
-  const res=await api('POST','/api/repairs/'+repairId+'/parts',{part_id,qty});
+  const res=await api('POST','/api/repairs/'+repairId+'/parts',{part_id,qty,unit_price});
   if(res && res.error){alert(res.error);return;}
   await Promise.all([loadRepairs(),loadAllRepairs(),loadStats()]);
   toast('Запчастину списано зі складу');
