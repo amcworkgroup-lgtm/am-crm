@@ -413,13 +413,14 @@ select{background-color:var(--bg2);color:var(--text)}
 </style>
 
 <style>
-#admin-reset-warehouse-btn{
-  border-color:rgba(239,68,68,.55)!important;
+#admin-clear-warehouse-btn{
+  border:1.5px solid rgba(239,68,68,.75)!important;
   color:#ef4444!important;
-  background:rgba(239,68,68,.08)!important;
+  background:rgba(239,68,68,.10)!important;
+  font-weight:800!important;
 }
-#admin-reset-warehouse-btn:hover{
-  background:rgba(239,68,68,.18)!important;
+#admin-clear-warehouse-btn:hover{
+  background:rgba(239,68,68,.22)!important;
 }
 </style>
 
@@ -2187,26 +2188,17 @@ window.onload=()=>{
 </script>
 
 <script>
-/* AM Store admin-only warehouse reset */
-function crmCurrentUserIsAdmin(){
-  // У поточній стабільній CRM один адмін-пароль, тому валідна сесія = адмін.
-  // Коли додамо повноцінних користувачів, тут буде перевірка role === 'admin'.
-  return !!localStorage.getItem('crm_token');
-}
-
-async function resetWarehouseAdminOnly(){
-  if(!crmCurrentUserIsAdmin()){
-    alert('Недостатньо прав. Очистити склад може тільки адміністратор.');
+/* AM Store: forced admin warehouse reset button */
+async function adminClearWarehouse(){
+  const token = localStorage.getItem('crm_token') || '';
+  if(!token){
+    alert('Не авторизовано');
     return;
   }
 
-  const ok1 = confirm('УВАГА! Це видалить ВСІ позиції зі складу. Ремонти, клієнти і фінанси не чіпає. Продовжити?');
-  if(!ok1) return;
+  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси не чіпає.')) return;
+  if(!confirm('Останнє підтвердження: точно очистити склад?')) return;
 
-  const ok2 = confirm('Підтвердіть ще раз: очистити весь склад?');
-  if(!ok2) return;
-
-  const token = localStorage.getItem('crm_token') || '';
   const r = await fetch('/api/parts/reset', {
     method:'DELETE',
     headers:{'x-auth-token': token}
@@ -2219,33 +2211,44 @@ async function resetWarehouseAdminOnly(){
   }
 
   alert('Склад очищено');
-  if(typeof loadParts === 'function') await loadParts();
-  if(typeof loadWarehouse === 'function') await loadWarehouse();
-  if(typeof render === 'function') render();
-  else location.reload();
+  location.reload();
 }
 
-function injectAdminWarehouseResetButton(){
-  if(!crmCurrentUserIsAdmin()) return;
-  if(document.getElementById('admin-reset-warehouse-btn')) return;
-
+function forceWarehouseResetButton(){
   const main = document.getElementById('main');
   if(!main) return;
 
-  const isWarehouse = (window.TAB === 'warehouse' || window.TAB === 'stock') || main.innerText.includes('Склад');
-  if(!isWarehouse) return;
+  const text = main.innerText || '';
+  const looksWarehouse =
+    text.includes('Позицій') ||
+    text.includes('Запчастина') ||
+    text.includes('Імпорт CSV') ||
+    text.includes('Експорт CSV') ||
+    text.includes('Шаблон Apple');
 
-  const toolbar = main.querySelector('.toolbar') || main.querySelector('.wh-main .toolbar') || main;
+  if(!looksWarehouse) return;
+  if(document.getElementById('admin-clear-warehouse-btn')) return;
+
+  const toolbar = Array.from(main.querySelectorAll('.toolbar')).find(x =>
+    (x.innerText || '').includes('Імпорт CSV') ||
+    (x.innerText || '').includes('Запчастина') ||
+    (x.innerText || '').includes('Експорт CSV')
+  ) || main.querySelector('.toolbar');
+
+  if(!toolbar) return;
+
   const btn = document.createElement('button');
-  btn.id = 'admin-reset-warehouse-btn';
+  btn.id = 'admin-clear-warehouse-btn';
   btn.className = 'btn red';
-  btn.style.marginLeft = 'auto';
+  btn.type = 'button';
   btn.innerHTML = '🗑 Очистити склад';
-  btn.onclick = resetWarehouseAdminOnly;
+  btn.onclick = adminClearWarehouse;
   toolbar.appendChild(btn);
 }
 
-setInterval(injectAdminWarehouseResetButton, 800);
+setInterval(forceWarehouseResetButton, 500);
+document.addEventListener('click', () => setTimeout(forceWarehouseResetButton, 300));
+window.addEventListener('load', () => setTimeout(forceWarehouseResetButton, 800));
 </script>
 
 </body>
