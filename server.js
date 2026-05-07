@@ -446,16 +446,10 @@ app.get('/api/backup', auth, (req, res) => {
 
 
 // REPAIR PARTS — прив'язка запчастин до ремонту
-function recalcRepairTotals(repairId){
-  const row = db.prepare('SELECT COALESCE(SUM(total_cost),0) AS cost, COALESCE(SUM(total_price),0) AS partsPrice FROM repair_parts WHERE repair_id=?').get(repairId);
-  const cost = Number(row.cost || 0);
-  const partsPrice = Number(row.partsPrice || 0);
-  db.prepare('UPDATE repairs SET cost=? WHERE id=?').run(cost, repairId);
-  const repair = db.prepare('SELECT price FROM repairs WHERE id=?').get(repairId) || { price: 0 };
-  return { cost, partsPrice, price: Number(repair.price || 0), profit: Number(repair.price || 0) - cost };
-}
 function recalcRepairCost(repairId){
-  return recalcRepairTotals(repairId).cost;
+  const row = db.prepare('SELECT COALESCE(SUM(total_cost),0) AS cost FROM repair_parts WHERE repair_id=?').get(repairId);
+  db.prepare('UPDATE repairs SET cost=? WHERE id=?').run(Number(row.cost||0), repairId);
+  return Number(row.cost||0);
 }
 
 app.get('/api/repairs/:id/parts', auth, (req, res) => {
@@ -476,7 +470,7 @@ app.post('/api/repairs/:id/parts', auth, (req, res) => {
   if(Number(part.qty||0) < qty) return res.status(400).json({ error:`Недостатньо на складі. Доступно: ${part.qty||0}` });
 
   const unitCost = Number(part.buy_price || 0);
-  const unitPrice = Number(req.body.unit_price ?? part.sell_price ?? 0);
+  const unitPrice = Number(part.sell_price || 0);
   const totalCost = unitCost * qty;
   const totalPrice = unitPrice * qty;
 
@@ -488,12 +482,11 @@ app.post('/api/repairs/:id/parts', auth, (req, res) => {
     db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
       .run(part.id, 'out', qty, `Списано на ремонт ${req.params.id}`);
 
-    db.prepare('UPDATE repairs SET price=COALESCE(price,0)+? WHERE id=?').run(totalPrice, req.params.id);
-    recalcRepairTotals(req.params.id);
+    recalcRepairCost(req.params.id);
   });
   tx();
 
-  res.json({ ok:true, ...recalcRepairTotals(req.params.id) });
+  res.json({ ok:true, cost: recalcRepairCost(req.params.id) });
 });
 
 app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
@@ -505,12 +498,11 @@ app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
     db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
       .run(row.part_id, 'in', Number(row.qty||0), `Повернення зі списання ремонту ${req.params.repairId}`);
     db.prepare('DELETE FROM repair_parts WHERE id=?').run(req.params.rowId);
-    db.prepare('UPDATE repairs SET price=MAX(COALESCE(price,0)-?,0) WHERE id=?').run(Number(row.total_price||0), req.params.repairId);
-    recalcRepairTotals(req.params.repairId);
+    recalcRepairCost(req.params.repairId);
   });
   tx();
 
-  res.json({ ok:true, ...recalcRepairTotals(req.params.repairId) });
+  res.json({ ok:true, cost: recalcRepairCost(req.params.repairId) });
 });
 
 // WAREHOUSE / PARTS
