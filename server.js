@@ -92,6 +92,14 @@ function auth(req, res, next) {
   next();
 }
 
+function adminOnly(req, res, next) {
+  // У поточній стабільній CRM є один основний пароль адміністратора.
+  // Тому всі валідні сесії зараз є адмінськими.
+  // Коли з'являться реальні користувачі/ролі — тут буде перевірка role === 'admin'.
+  return next();
+}
+
+
 app.post('/api/login', (req, res) => {
   if (req.body.password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Невірний пароль' });
   const token = crypto.randomBytes(32).toString('hex');
@@ -608,5 +616,18 @@ app.get('/api/export/repairs', auth, (req, res) => {
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+
+// WAREHOUSE RESET — admin only
+app.delete('/api/parts/reset', auth, adminOnly, (req, res) => {
+  try {
+    db.prepare('DELETE FROM parts').run();
+    try { db.prepare('DELETE FROM sqlite_sequence WHERE name=?').run('parts'); } catch(e) {}
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 app.listen(PORT, () => { console.log(`AM Store CRM → http://localhost:${PORT}`); });
