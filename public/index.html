@@ -429,6 +429,13 @@ select{background-color:var(--bg2);color:var(--text)}
   .wh-tree{max-height:280px}
 }
 
+
+.wh-folder.toggle{justify-content:space-between}
+.wh-caret{font-size:11px;color:var(--text3);transition:transform .15s}
+.wh-folder.open .wh-caret{transform:rotate(90deg)}
+.wh-children{display:none}
+.wh-children.open{display:block}
+
 </style>
 </head>
 <body>
@@ -490,7 +497,7 @@ let TAB='dashboard';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
 let settings={}, users=[];
 let settingTab='users';
-let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='',stockSearch='',stockCat='',stockLow=false,warehouseFolderPath='';
+let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='',stockSearch='',stockCat='',stockLow=false,warehouseFolderPath='',whOpenFolders=JSON.parse(localStorage.getItem('whOpenFolders')||'{}');
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null,partEditId=null;
 
@@ -1788,6 +1795,13 @@ function whBuildTree(){
   });
   return tree;
 }
+
+function whToggle(key){
+  whOpenFolders[key]=!whOpenFolders[key];
+  localStorage.setItem('whOpenFolders',JSON.stringify(whOpenFolders));
+  render();
+}
+
 function whSelect(path){
   warehouseFolderPath=path||'';
   render();
@@ -1801,43 +1815,45 @@ function whMatchesFolder(p){
   if(partsPath[2] && model!==partsPath[2]) return false;
   return true;
 }
+
 function whRenderTree(){
   const tree=whBuildTree();
   let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')">📦 Весь склад</div>`;
+
   Object.keys(tree).sort().forEach(root=>{
-    html+=`<div class="wh-folder root ${warehouseFolderPath===root?'on':''}" onclick="whSelect('${root.replace(/'/g,"\\'")}')">${root}</div>`;
+    const rootOpen=!!whOpenFolders[root] || warehouseFolderPath.startsWith(root);
+    html+=`<div class="wh-folder root toggle ${warehouseFolderPath===root?'on':''} ${rootOpen?'open':''}">
+      <span onclick="whSelect('${root.replace(/'/g,"\\'")}')">${root}</span>
+      <span class="wh-caret" onclick="event.stopPropagation();whToggle('${root.replace(/'/g,"\\'")}')">▶</span>
+    </div>`;
+
+    html+=`<div class="wh-children ${rootOpen?'open':''}">`;
+
     Object.keys(tree[root]).sort().forEach(sub=>{
       const subPath=root+' / '+sub;
-      html+=`<div class="wh-folder wh-sub ${warehouseFolderPath===subPath?'on':''}" onclick="whSelect('${subPath.replace(/'/g,"\\'")}')">📁 ${sub}</div>`;
+      const subOpen=!!whOpenFolders[subPath] || warehouseFolderPath.startsWith(subPath);
+
+      html+=`<div class="wh-folder wh-sub toggle ${warehouseFolderPath===subPath?'on':''} ${subOpen?'open':''}">
+        <span onclick="whSelect('${subPath.replace(/'/g,"\\'")}')">📁 ${sub}</span>
+        <span class="wh-caret" onclick="event.stopPropagation();whToggle('${subPath.replace(/'/g,"\\'")}')">▶</span>
+      </div>`;
+
+      html+=`<div class="wh-children ${subOpen?'open':''}">`;
+
       Array.from(tree[root][sub]).sort().forEach(model=>{
         const path=root+' / '+sub+' / '+model;
         html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${path.replace(/'/g,"\\'")}')">${model}</div>`;
       });
+
+      html+=`</div>`;
     });
+
+    html+=`</div>`;
   });
+
   return html;
 }
 
-
-
-async function clearWarehouseAdmin(){
-  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси НЕ будуть видалені.')) return;
-  if(!confirm('Підтвердіть ще раз: очистити весь склад?')) return;
-
-  const r = await api('POST','/api/parts/reset',{});
-  if(!r || r.error){
-    alert((r && r.error) ? r.error : 'Не вдалося очистити склад');
-    return;
-  }
-
-  stockSearch='';
-  stockCat='';
-  stockLow=false;
-  warehouseFolderPath='';
-  await loadParts();
-  render();
-  toast('Склад очищено. Видалено позицій: ' + (r.deleted || 0));
-}
 
 function renderWarehouse(){
   const visibleParts = parts.filter(p=>whMatchesFolder(p));
