@@ -90,6 +90,25 @@ db.exec(`
   try { db.exec(`ALTER TABLE repairs ADD COLUMN ${col}`); } catch(e) {}
 });
 
+// TOTAL COST SYSTEM — ручна собівартість + запчастини зі складу
+['additional_cost REAL DEFAULT 0','parts_cost REAL DEFAULT 0','parts_price REAL DEFAULT 0'].forEach(col => {
+  try { db.exec(`ALTER TABLE repairs ADD COLUMN ${col}`); } catch(e) {}
+});
+try {
+  db.exec(`
+    UPDATE repairs
+    SET
+      parts_cost = COALESCE((SELECT SUM(total_cost) FROM repair_parts WHERE repair_id=repairs.id),0),
+      parts_price = COALESCE((SELECT SUM(total_price) FROM repair_parts WHERE repair_id=repairs.id),0);
+    UPDATE repairs
+    SET additional_cost = CASE
+      WHEN COALESCE(additional_cost,0)=0 THEN MAX(COALESCE(cost,0) - COALESCE(parts_cost,0), 0)
+      ELSE additional_cost
+    END;
+    UPDATE repairs SET cost = COALESCE(additional_cost,0) + COALESCE(parts_cost,0);
+  `);
+} catch(e) {}
+
 const mc = db.prepare('SELECT COUNT(*) as c FROM masters').get();
 if (mc.c === 0) ['Іван','Олег','Марія','Сергій'].forEach(n => db.prepare('INSERT OR IGNORE INTO masters(name)VALUES(?)').run(n));
 
@@ -131,12 +150,15 @@ app.get('/api/repairs', auth, (req, res) => {
 app.post('/api/repairs', auth, (req, res) => {
   const r = req.body;
   const id = 'R' + String(Date.now()).slice(-5).padStart(5,'0');
+  const additionalCost = Number(r.additional_cost ?? r.cost ?? 0);
   db.prepare(`INSERT INTO repairs(id,date_in,date_out,date_plan,client,phone,type,model,serial,password,kit,problem,color,status,master,cost,price,pay_status,pay_method,condition,notes,internal_notes,photos)VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
     id,r.date_in,r.date_out||null,r.date_plan||null,r.client,r.phone,r.type,r.model,
     r.serial||'',r.password||'',r.kit||'',r.problem||'',r.color||'',
-    r.status||'На діагностиці',r.master||'',r.cost||0,r.price||0,
+    r.status||'На діагностиці',r.master||'',additionalCost,r.price||0,
     r.pay_status||'Не оплачено',r.pay_method||'',r.condition||'',r.notes||'',r.internal_notes||'','[]'
   );
+  db.prepare('UPDATE repairs SET additional_cost=? WHERE id=?').run(additionalCost, id);
+  recalcRepairTotals(id);
   res.json({ id });
 });
 
@@ -146,8 +168,10 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   db.prepare(`UPDATE repairs SET date_in=?,date_out=?,date_plan=?,client=?,phone=?,type=?,model=?,serial=?,password=?,kit=?,problem=?,color=?,status=?,master=?,cost=?,price=?,pay_status=?,pay_method=?,condition=?,notes=?,internal_notes=? WHERE id=?`).run(
     r.date_in,r.date_out||null,r.date_plan||null,r.client,r.phone,r.type,r.model,
     r.serial||'',r.password||'',r.kit||'',r.problem||'',r.color||'',r.status,r.master||'',
-    r.cost||0,r.price||0,r.pay_status,r.pay_method||'',r.condition||'',r.notes||'',r.internal_notes||'',req.params.id
+    Number(r.additional_cost ?? r.cost ?? 0),r.price||0,r.pay_status,r.pay_method||'',r.condition||'',r.notes||'',r.internal_notes||'',req.params.id
   );
+  db.prepare('UPDATE repairs SET additional_cost=? WHERE id=?').run(Number(r.additional_cost ?? r.cost ?? 0), req.params.id);
+  recalcRepairTotals(req.params.id);
   // Автозапис в касу якщо оплата щойно стала "Оплачено"
   if(old && r.pay_status === 'Оплачено' && old.pay_status !== 'Оплачено' && r.price > 0){
     const method = r.pay_method || 'Готівка';
@@ -446,10 +470,19 @@ app.get('/api/backup', auth, (req, res) => {
 
 
 // REPAIR PARTS — прив'язка запчастин до ремонту
+function recalcRepairTotals(repairId){
+  const sums = db.prepare('SELECT COALESCE(SUM(total_cost),0) AS partsCost, COALESCE(SUM(total_price),0) AS partsPrice FROM repair_parts WHERE repair_id=?').get(repairId);
+  const repair = db.prepare('SELECT price, additional_cost FROM repairs WHERE id=?').get(repairId) || { price: 0, additional_cost: 0 };
+  const partsCost = Number(sums.partsCost || 0);
+  const partsPrice = Number(sums.partsPrice || 0);
+  const additionalCost = Number(repair.additional_cost || 0);
+  const totalCost = partsCost + additionalCost;
+  const price = Number(repair.price || 0);
+  db.prepare('UPDATE repairs SET parts_cost=?, parts_price=?, cost=? WHERE id=?').run(partsCost, partsPrice, totalCost, repairId);
+  return { cost: totalCost, partsCost, partsPrice, additionalCost, price, profit: price - totalCost };
+}
 function recalcRepairCost(repairId){
-  const row = db.prepare('SELECT COALESCE(SUM(total_cost),0) AS cost FROM repair_parts WHERE repair_id=?').get(repairId);
-  db.prepare('UPDATE repairs SET cost=? WHERE id=?').run(Number(row.cost||0), repairId);
-  return Number(row.cost||0);
+  return recalcRepairTotals(repairId).cost;
 }
 
 app.get('/api/repairs/:id/parts', auth, (req, res) => {
@@ -470,7 +503,7 @@ app.post('/api/repairs/:id/parts', auth, (req, res) => {
   if(Number(part.qty||0) < qty) return res.status(400).json({ error:`Недостатньо на складі. Доступно: ${part.qty||0}` });
 
   const unitCost = Number(part.buy_price || 0);
-  const unitPrice = Number(part.sell_price || 0);
+  const unitPrice = Number(req.body.unit_price ?? part.sell_price ?? 0);
   const totalCost = unitCost * qty;
   const totalPrice = unitPrice * qty;
 
@@ -482,11 +515,12 @@ app.post('/api/repairs/:id/parts', auth, (req, res) => {
     db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
       .run(part.id, 'out', qty, `Списано на ремонт ${req.params.id}`);
 
-    recalcRepairCost(req.params.id);
+    db.prepare('UPDATE repairs SET price=COALESCE(price,0)+? WHERE id=?').run(totalPrice, req.params.id);
+    recalcRepairTotals(req.params.id);
   });
   tx();
 
-  res.json({ ok:true, cost: recalcRepairCost(req.params.id) });
+  res.json({ ok:true, ...recalcRepairTotals(req.params.id) });
 });
 
 app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
@@ -498,11 +532,12 @@ app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
     db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)')
       .run(row.part_id, 'in', Number(row.qty||0), `Повернення зі списання ремонту ${req.params.repairId}`);
     db.prepare('DELETE FROM repair_parts WHERE id=?').run(req.params.rowId);
-    recalcRepairCost(req.params.repairId);
+    db.prepare('UPDATE repairs SET price=MAX(COALESCE(price,0)-?,0) WHERE id=?').run(Number(row.total_price||0), req.params.repairId);
+    recalcRepairTotals(req.params.repairId);
   });
   tx();
 
-  res.json({ ok:true, cost: recalcRepairCost(req.params.repairId) });
+  res.json({ ok:true, ...recalcRepairTotals(req.params.repairId) });
 });
 
 // WAREHOUSE / PARTS
