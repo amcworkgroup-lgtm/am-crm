@@ -412,6 +412,9 @@ select{background-color:var(--bg2);color:var(--text)}
 @media(max-width:900px){.set-grid{grid-template-columns:1fr}.set-row{grid-template-columns:1fr;gap:5px}.set-row.head{display:none}.visual-actions{grid-template-columns:1fr}.bg-presets{grid-template-columns:repeat(2,1fr)}.settings-form-grid{grid-template-columns:1fr}}
 </style>
 
+
+
+
 <style>
 #admin-clear-warehouse-btn{
   border:1.5px solid rgba(239,68,68,.75)!important;
@@ -2187,8 +2190,44 @@ window.onload=()=>{
 };
 </script>
 
+
+
+
 <script>
-/* AM Store: forced admin warehouse reset button */
+/* AM Store: forced admin warehouse clear button v2 */
+async function amGetPartsListForClear(token){
+  const endpoints = ['/api/parts', '/api/warehouse'];
+  for(const url of endpoints){
+    try{
+      const r = await fetch(url, {headers:{'x-auth-token':token}});
+      if(!r.ok) continue;
+      const d = await r.json();
+      if(Array.isArray(d)) return d;
+      if(Array.isArray(d.rows)) return d.rows;
+      if(Array.isArray(d.items)) return d.items;
+      if(Array.isArray(d.parts)) return d.parts;
+    }catch(e){}
+  }
+  return [];
+}
+
+async function amDeleteOnePartForClear(token, id){
+  const urls = [
+    '/api/parts/' + encodeURIComponent(id),
+    '/api/warehouse/' + encodeURIComponent(id)
+  ];
+  for(const url of urls){
+    try{
+      const r = await fetch(url, {
+        method:'DELETE',
+        headers:{'x-auth-token':token}
+      });
+      if(r.ok) return true;
+    }catch(e){}
+  }
+  return false;
+}
+
 async function adminClearWarehouse(){
   const token = localStorage.getItem('crm_token') || '';
   if(!token){
@@ -2199,18 +2238,36 @@ async function adminClearWarehouse(){
   if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси не чіпає.')) return;
   if(!confirm('Останнє підтвердження: точно очистити склад?')) return;
 
-  const r = await fetch('/api/parts/reset', {
-    method:'DELETE',
-    headers:{'x-auth-token': token}
-  });
+  // 1) Спочатку пробуємо швидкий серверний reset
+  try{
+    const r = await fetch('/api/parts/reset', {
+      method:'DELETE',
+      headers:{'x-auth-token': token}
+    });
+    if(r.ok){
+      alert('Склад очищено');
+      location.reload();
+      return;
+    }
+  }catch(e){}
 
-  const d = await r.json().catch(()=>({}));
-  if(!r.ok){
-    alert(d.error || 'Не вдалося очистити склад');
+  // 2) Якщо reset не спрацював — видаляємо по одній позиції через існуючий API
+  const parts = await amGetPartsListForClear(token);
+  if(!parts.length){
+    alert('Не знайшов позиції складу або API не відповів. Спробуй оновити сторінку і повторити.');
     return;
   }
 
-  alert('Склад очищено');
+  let ok = 0, fail = 0;
+  for(const p of parts){
+    const id = p.id || p.ID || p._id;
+    if(!id){ fail++; continue; }
+    const deleted = await amDeleteOnePartForClear(token, id);
+    if(deleted) ok++;
+    else fail++;
+  }
+
+  alert('Готово. Видалено: ' + ok + (fail ? '. Не видалено: ' + fail : ''));
   location.reload();
 }
 
@@ -2224,16 +2281,18 @@ function forceWarehouseResetButton(){
     text.includes('Запчастина') ||
     text.includes('Імпорт CSV') ||
     text.includes('Експорт CSV') ||
-    text.includes('Шаблон Apple');
+    text.includes('Шаблон Apple') ||
+    text.includes('Склад');
 
   if(!looksWarehouse) return;
   if(document.getElementById('admin-clear-warehouse-btn')) return;
 
-  const toolbar = Array.from(main.querySelectorAll('.toolbar')).find(x =>
+  const toolbars = Array.from(main.querySelectorAll('.toolbar'));
+  const toolbar = toolbars.find(x =>
     (x.innerText || '').includes('Імпорт CSV') ||
     (x.innerText || '').includes('Запчастина') ||
     (x.innerText || '').includes('Експорт CSV')
-  ) || main.querySelector('.toolbar');
+  ) || toolbars[0];
 
   if(!toolbar) return;
 
