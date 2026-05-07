@@ -410,6 +410,25 @@ select{background-color:var(--bg2);color:var(--text)}
 .bg-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.bg-preset{height:88px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background-size:cover;background-position:center;position:relative;overflow:hidden}.bg-preset.on{outline:2px solid var(--orange)}.bg-preset.on:after{content:'✓';position:absolute;right:8px;bottom:8px;background:var(--orange);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800}
 .settings-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.settings-form-grid .full{grid-column:1/-1}
 @media(max-width:900px){.set-grid{grid-template-columns:1fr}.set-row{grid-template-columns:1fr;gap:5px}.set-row.head{display:none}.visual-actions{grid-template-columns:1fr}.bg-presets{grid-template-columns:repeat(2,1fr)}.settings-form-grid{grid-template-columns:1fr}}
+
+/* ══ WAREHOUSE 1C FOLDERS ══ */
+.wh-layout{display:grid;grid-template-columns:310px 1fr;gap:14px;align-items:start}
+.wh-tree{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:14px;max-height:calc(100vh - 170px);overflow:auto;box-shadow:var(--shadow)}
+.wh-tree-title{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px}
+.wh-folder{border-radius:10px;padding:8px 10px;margin:2px 0;cursor:pointer;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px}
+.wh-folder:hover{background:var(--bg3);color:var(--text)}
+.wh-folder.on{background:var(--orange-dim);color:var(--orange);box-shadow:inset 3px 0 0 var(--orange)}
+.wh-folder.root{font-size:14px;color:var(--text);font-weight:800}
+.wh-sub{margin-left:12px}
+.wh-model{margin-left:28px;font-size:12px;font-weight:600}
+.wh-products{min-width:0}
+.wh-path{font-size:12px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}
+.wh-actions{display:flex;gap:4px;align-items:center}
+@media(max-width:900px){
+  .wh-layout{grid-template-columns:1fr}
+  .wh-tree{max-height:280px}
+}
+
 </style>
 </head>
 <body>
@@ -471,7 +490,7 @@ let TAB='dashboard';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
 let settings={}, users=[];
 let settingTab='users';
-let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='',stockSearch='',stockCat='',stockLow=false;
+let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='',stockSearch='',stockCat='',stockLow=false,warehouseFolderPath='';
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null,partEditId=null;
 
@@ -1728,19 +1747,111 @@ function initStatsCharts(){
 // ════════════════════════════════
 // WAREHOUSE / PARTS TAB
 // ════════════════════════════════
+
+function whPartRoot(p){
+  const s=((p.category||'')+' '+(p.name||'')+' '+(p.compatible||'')).toLowerCase();
+  if(s.includes('iphone')) return '📱 iPhone';
+  if(s.includes('ipad')) return '📲 iPad';
+  if(s.includes('macbook')) return '💻 MacBook';
+  if(s.includes('watch')) return '⌚ Apple Watch';
+  if(s.includes('airpods')) return '🎧 AirPods';
+  return '🧰 Витратні матеріали';
+}
+function whPartSub(p){
+  const s=((p.category||'')+' '+(p.name||'')).toLowerCase();
+  const cat=String(p.category||'');
+  if(cat.includes('/')) return cat.split('/').slice(1).join('/').trim();
+  if(s.includes('дисплей') || s.includes('oled') || s.includes('ips') || s.includes('екран')) return 'Дисплеї';
+  if(s.includes('акб') || s.includes('акум') || s.includes('battery')) return 'Акумулятори';
+  if(s.includes('шлейф') || s.includes('заряд')) return 'Шлейфи зарядки';
+  if(s.includes('камера')) return 'Камери';
+  if(s.includes('заднє скло') || s.includes('стекло')) return 'Заднє скло';
+  if(s.includes('корпус')) return 'Корпуси';
+  if(s.includes('кейс')) return 'Кейси';
+  if(s.includes('амбуш') || s.includes('сітки') || s.includes('сетки')) return 'Дрібні комплектуючі';
+  if(s.includes('клей') || s.includes('скотч')) return 'Клей / скотч';
+  if(s.includes('спирт') || s.includes('сервет')) return 'Хімія';
+  if(s.includes('термо')) return 'Термоматеріали';
+  if(s.includes('гвинт') || s.includes('магніт')) return 'Гвинти / дрібниці';
+  return 'Інше';
+}
+function whPartModel(p){
+  return String(p.compatible||'').trim() || 'Без моделі';
+}
+function whBuildTree(){
+  const tree={};
+  parts.forEach(p=>{
+    const root=whPartRoot(p), sub=whPartSub(p), model=whPartModel(p);
+    if(!tree[root]) tree[root]={};
+    if(!tree[root][sub]) tree[root][sub]=new Set();
+    tree[root][sub].add(model);
+  });
+  return tree;
+}
+function whSelect(path){
+  warehouseFolderPath=path||'';
+  render();
+}
+function whMatchesFolder(p){
+  if(!warehouseFolderPath) return true;
+  const partsPath=warehouseFolderPath.split(' / ');
+  const root=whPartRoot(p), sub=whPartSub(p), model=whPartModel(p);
+  if(partsPath[0] && root!==partsPath[0]) return false;
+  if(partsPath[1] && sub!==partsPath[1]) return false;
+  if(partsPath[2] && model!==partsPath[2]) return false;
+  return true;
+}
+function whRenderTree(){
+  const tree=whBuildTree();
+  let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')">📦 Весь склад</div>`;
+  Object.keys(tree).sort().forEach(root=>{
+    html+=`<div class="wh-folder root ${warehouseFolderPath===root?'on':''}" onclick="whSelect('${root.replace(/'/g,"\\'")}')">${root}</div>`;
+    Object.keys(tree[root]).sort().forEach(sub=>{
+      const subPath=root+' / '+sub;
+      html+=`<div class="wh-folder wh-sub ${warehouseFolderPath===subPath?'on':''}" onclick="whSelect('${subPath.replace(/'/g,"\\'")}')">📁 ${sub}</div>`;
+      Array.from(tree[root][sub]).sort().forEach(model=>{
+        const path=root+' / '+sub+' / '+model;
+        html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${path.replace(/'/g,"\\'")}')">${model}</div>`;
+      });
+    });
+  });
+  return html;
+}
+
+
+
+async function clearWarehouseAdmin(){
+  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси НЕ будуть видалені.')) return;
+  if(!confirm('Підтвердіть ще раз: очистити весь склад?')) return;
+
+  const r = await api('POST','/api/parts/reset',{});
+  if(!r || r.error){
+    alert((r && r.error) ? r.error : 'Не вдалося очистити склад');
+    return;
+  }
+
+  stockSearch='';
+  stockCat='';
+  stockLow=false;
+  warehouseFolderPath='';
+  await loadParts();
+  render();
+  toast('Склад очищено. Видалено позицій: ' + (r.deleted || 0));
+}
+
 function renderWarehouse(){
-  const totalItems = parts.length;
-  const totalQty = parts.reduce((a,p)=>a+Number(p.qty||0),0);
-  const totalValue = parts.reduce((a,p)=>a+Number(p.qty||0)*Number(p.buy_price||0),0);
-  const lowCount = parts.filter(p=>Number(p.qty||0)<=Number(p.min_qty||1)).length;
-  const cats=[...new Set(parts.map(p=>p.category).filter(Boolean))].sort();
-  const catOpts=cats.map(c=>`<option value="${c}" ${stockCat===c?'selected':''}>${c}</option>`).join('');
-  const rows=parts.length?parts.map(p=>{
+  const visibleParts = parts.filter(p=>whMatchesFolder(p));
+  const totalItems = visibleParts.length;
+  const totalQty = visibleParts.reduce((a,p)=>a+Number(p.qty||0),0);
+  const totalValue = visibleParts.reduce((a,p)=>a+Number(p.qty||0)*Number(p.buy_price||0),0);
+  const lowCount = visibleParts.filter(p=>Number(p.qty||0)<=Number(p.min_qty||1)).length;
+
+  const rows=visibleParts.length?visibleParts.map(p=>{
     const low=Number(p.qty||0)<=Number(p.min_qty||1);
     return `<tr>
       <td class="tid">#${p.id}</td>
       <td><div class="tc">${p.name||'—'}</div><div class="tp">${p.compatible||''}</div></td>
-      <td>${p.category||'—'}</td>
+      <td>${whPartRoot(p).replace(/^.+? /,'')} / ${whPartSub(p)}</td>
       <td class="${low?'wh-low':'wh-ok'}">${p.qty||0}</td>
       <td>${p.min_qty||0}</td>
       <td style="font-family:var(--mono)">${Number(p.buy_price||0).toLocaleString()} ₴</td>
@@ -1753,31 +1864,45 @@ function renderWarehouse(){
         <button class="btn xs red" onclick="deletePart(${p.id})">✕</button>
       </div></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="9"><div style="text-align:center;padding:44px;color:var(--text3)">Запчастин не знайдено</div></td></tr>`;
+  }).join(''):`<tr><td colspan="9"><div style="text-align:center;padding:44px;color:var(--text3)">У цій папці немає запчастин</div></td></tr>`;
 
   return `<div class="wh-kpi">
-    <div class="cash-card"><div class="cash-lbl">Позицій</div><div class="cash-val">${totalItems}</div></div>
+    <div class="cash-card"><div class="cash-lbl">Позицій у папці</div><div class="cash-val">${totalItems}</div></div>
     <div class="cash-card"><div class="cash-lbl">Кількість</div><div class="cash-val">${totalQty}</div></div>
     <div class="cash-card"><div class="cash-lbl">На суму закупки</div><div class="cash-val">${totalValue.toLocaleString()} ₴</div></div>
     <div class="cash-card"><div class="cash-lbl">Мало залишилось</div><div class="cash-val ${lowCount?'red':'green'}">${lowCount}</div></div>
   </div>
-  <div class="toolbar">
-    <input class="inp" placeholder="Пошук запчастини, моделі, постачальника..." value="${stockSearch}" oninput="stockSearch=this.value;clearTimeout(window._stockTimer);window._stockTimer=setTimeout(()=>loadParts().then(render),300)" style="min-width:280px;flex:1"/>
-    <select class="sel" onchange="stockCat=this.value;loadParts().then(render)"><option value="">Всі категорії</option>${catOpts}</select>
-    <button class="btn ${stockLow?'orange':''}" onclick="stockLow=!stockLow;loadParts().then(render)">⚠️ Мало</button>
-    <button class="btn" onclick="stockSearch='';stockCat='';stockLow=false;loadParts().then(render)">Скинути</button>
-    <button class="btn orange" onclick="openPartModal()">+ Запчастина</button>
-    <button class="btn green" onclick="document.getElementById('parts-import-file').click()">📥 Імпорт CSV</button>
-    <button class="btn" onclick="exportPartsCSV()">📤 Експорт CSV</button>
-    <a class="btn" href="/template_apple_parts.csv" download>⬇️ Шаблон Apple</a>
-    <button class="btn red" onclick="clearWarehouseAdmin()">🗑 Очистити склад</button>
-    <input id="parts-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="importPartsCSV(this)"/>
-  </div>
-  <div class="twrap desktop-table"><table><thead><tr>
-    <th>ID</th><th>Назва</th><th>Категорія</th><th>К-сть</th><th>Мін.</th><th>Закупка</th><th>Продаж</th><th>Постачальник</th><th>Дії</th>
-  </tr></thead><tbody>${rows}</tbody></table></div>
-  <div class="mobile-cards">${parts.map(p=>`<div class="rep-card"><div class="rep-card-top"><div><div class="rep-card-id">#${p.id} · ${p.category||'Без категорії'}</div><div class="rep-card-name">${p.name}</div><div class="rep-card-device">${p.compatible||''}</div></div><div style="text-align:right"><div class="rep-card-price ${Number(p.qty||0)<=Number(p.min_qty||1)?'wh-low':'wh-ok'}">${p.qty||0} шт</div><div class="tp">${Number(p.buy_price||0).toLocaleString()} ₴</div></div></div><div class="rep-card-actions"><button class="btn sm green" onclick="adjustPart(${p.id},1)">+1</button><button class="btn sm amber" onclick="adjustPart(${p.id},-1)">−1</button><button class="btn sm" onclick="openPartModal(${p.id})">Ред.</button><button class="btn sm red" onclick="deletePart(${p.id})">✕</button></div></div>`).join('')}</div>`;
+
+  <div class="wh-layout">
+    <aside class="wh-tree">
+      <div class="wh-tree-title">Папки складу</div>
+      ${whRenderTree()}
+    </aside>
+
+    <section class="wh-products">
+      <div class="toolbar">
+        <input class="inp" placeholder="Пошук запчастини, моделі, постачальника..." value="${stockSearch}" oninput="stockSearch=this.value;clearTimeout(window._stockTimer);window._stockTimer=setTimeout(()=>loadParts().then(render),300)" style="min-width:280px;flex:1"/>
+        <button class="btn ${stockLow?'orange':''}" onclick="stockLow=!stockLow;loadParts().then(render)">⚠️ Мало</button>
+        <button class="btn" onclick="stockSearch='';stockCat='';stockLow=false;warehouseFolderPath='';loadParts().then(render)">Скинути</button>
+        <button class="btn orange" onclick="openPartModal()">+ Запчастина</button>
+        <button class="btn green" onclick="document.getElementById('parts-import-file').click()">📥 Імпорт CSV</button>
+        <button class="btn" onclick="exportPartsCSV()">📤 Експорт CSV</button>
+        <a class="btn" href="/template_apple_parts.csv" download>⬇️ Шаблон Apple</a>
+        <button class="btn red" onclick="clearWarehouseAdmin()">🗑 Очистити склад</button>
+        <input id="parts-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="importPartsCSV(this)"/>
+      </div>
+
+      <div class="wh-path">${warehouseFolderPath||'Весь склад'}</div>
+
+      <div class="twrap desktop-table"><table><thead><tr>
+        <th>ID</th><th>Назва</th><th>Папка</th><th>К-сть</th><th>Мін.</th><th>Закупка</th><th>Продаж</th><th>Постачальник</th><th>Дії</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+
+      <div class="mobile-cards">${visibleParts.map(p=>`<div class="rep-card"><div class="rep-card-top"><div><div class="rep-card-id">#${p.id} · ${whPartRoot(p)} / ${whPartSub(p)}</div><div class="rep-card-name">${p.name}</div><div class="rep-card-device">${p.compatible||''}</div></div><div style="text-align:right"><div class="rep-card-price ${Number(p.qty||0)<=Number(p.min_qty||1)?'wh-low':'wh-ok'}">${p.qty||0} шт</div><div class="tp">${Number(p.buy_price||0).toLocaleString()} ₴</div></div></div><div class="rep-card-actions"><button class="btn sm green" onclick="adjustPart(${p.id},1)">+1</button><button class="btn sm amber" onclick="adjustPart(${p.id},-1)">−1</button><button class="btn sm" onclick="openPartModal(${p.id})">Ред.</button><button class="btn sm red" onclick="deletePart(${p.id})">✕</button></div></div>`).join('')}</div>
+    </section>
+  </div>`;
 }
+
 
 function openPartModal(id=null){
   partEditId=id;
@@ -1844,25 +1969,6 @@ async function importPartsCSV(input){
   render();
   toast(`Імпортовано: додано ${r.created||0}, оновлено ${r.updated||0}`);
 }
-
-async function clearWarehouseAdmin(){
-  if(!confirm('Видалити ВСЮ номенклатуру складу? Ремонти, клієнти і фінанси НЕ будуть видалені.')) return;
-  if(!confirm('Підтвердіть ще раз: очистити весь склад?')) return;
-
-  const r = await api('POST','/api/parts/reset',{});
-  if(!r || r.error){
-    alert((r && r.error) ? r.error : 'Не вдалося очистити склад');
-    return;
-  }
-
-  stockSearch='';
-  stockCat='';
-  stockLow=false;
-  await loadParts();
-  render();
-  toast('Склад очищено. Видалено позицій: ' + (r.deleted || 0));
-}
-
 function exportPartsCSV(){
   window.open('/api/parts/export','_blank');
 }
