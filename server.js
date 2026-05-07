@@ -48,6 +48,29 @@ db.exec(`
     amount REAL, method TEXT DEFAULT 'Готівка', description TEXT,
     repair_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT DEFAULT '',
+    compatible TEXT DEFAULT '',
+    qty INTEGER DEFAULT 0,
+    min_qty INTEGER DEFAULT 1,
+    buy_price REAL DEFAULT 0,
+    sell_price REAL DEFAULT 0,
+    supplier TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS stock_movements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    part_id INTEGER,
+    date TEXT DEFAULT CURRENT_TIMESTAMP,
+    type TEXT,
+    qty INTEGER DEFAULT 0,
+    note TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 ['color','condition','internal_notes','photos TEXT DEFAULT "[]"'].forEach(col => {
@@ -278,8 +301,6 @@ app.get('/api/stats', auth, (req, res) => {
 
 // SETTINGS
 db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`);
-db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, login TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'manager', active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
-try { db.prepare('INSERT OR IGNORE INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run('Адмін','admin',ADMIN_PASSWORD,'admin',1); } catch(e) {}
 const DEFAULT_SETTINGS = {
   shop_name: 'AM Store',
   shop_phone: '073 477 30 90',
@@ -307,34 +328,6 @@ app.put('/api/settings', auth, (req, res) => {
   const stmt = db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)');
   Object.entries(req.body).forEach(([k,v]) => stmt.run(k, String(v)));
   res.json({ ok: true });
-});
-
-
-// USERS (settings only; без прив'язки до майстра)
-app.get('/api/users', auth, (req, res) => {
-  const rows = db.prepare('SELECT id,name,login,role,active,created_at FROM users ORDER BY id DESC').all();
-  res.json(rows);
-});
-app.post('/api/users', auth, (req, res) => {
-  const { name, login, password, role, active } = req.body;
-  if(!login || !password) return res.status(400).json({ error: 'Логін і пароль обов’язкові' });
-  try {
-    db.prepare('INSERT INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run(name||login, login, password, role||'manager', active===0?0:1);
-    res.json({ ok:true });
-  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
-});
-app.put('/api/users/:id', auth, (req, res) => {
-  const { name, login, password, role, active } = req.body;
-  const old = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
-  if(!old) return res.status(404).json({ error:'Користувача не знайдено' });
-  try {
-    db.prepare('UPDATE users SET name=?, login=?, password=?, role=?, active=? WHERE id=?').run(name||login, login, password || old.password, role||old.role, active===0?0:1, req.params.id);
-    res.json({ ok:true });
-  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
-});
-app.delete('/api/users/:id', auth, (req, res) => {
-  db.prepare('DELETE FROM users WHERE id=?').run(req.params.id);
-  res.json({ ok:true });
 });
 
 // CHANGE PASSWORD
@@ -365,6 +358,65 @@ app.get('/api/backup', auth, (req, res) => {
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename=crm_backup_${date}.db`);
   res.sendFile(dbPath);
+});
+
+
+// WAREHOUSE / PARTS
+app.get('/api/parts', auth, (req, res) => {
+  const { search, category, low } = req.query;
+  let sql = 'SELECT * FROM parts WHERE 1=1';
+  const p = [];
+  if (search) {
+    sql += ' AND (name LIKE ? OR compatible LIKE ? OR supplier LIKE ? OR notes LIKE ?)';
+    const q = `%${search}%`; p.push(q,q,q,q);
+  }
+  if (category) { sql += ' AND category=?'; p.push(category); }
+  if (low) { sql += ' AND qty <= min_qty'; }
+  sql += ' ORDER BY category ASC, name ASC';
+  res.json(db.prepare(sql).all(...p));
+});
+
+app.post('/api/parts', auth, (req, res) => {
+  const r = req.body || {};
+  const info = db.prepare(`INSERT INTO parts(name,category,compatible,qty,min_qty,buy_price,sell_price,supplier,notes) VALUES(?,?,?,?,?,?,?,?,?)`).run(
+    r.name || '', r.category || '', r.compatible || '', Number(r.qty||0), Number(r.min_qty||1),
+    Number(r.buy_price||0), Number(r.sell_price||0), r.supplier || '', r.notes || ''
+  );
+  if (Number(r.qty||0) !== 0) {
+    db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)').run(info.lastInsertRowid, 'in', Number(r.qty||0), 'Початковий залишок');
+  }
+  res.json({ id: info.lastInsertRowid });
+});
+
+app.put('/api/parts/:id', auth, (req, res) => {
+  const r = req.body || {};
+  db.prepare(`UPDATE parts SET name=?,category=?,compatible=?,qty=?,min_qty=?,buy_price=?,sell_price=?,supplier=?,notes=? WHERE id=?`).run(
+    r.name || '', r.category || '', r.compatible || '', Number(r.qty||0), Number(r.min_qty||1),
+    Number(r.buy_price||0), Number(r.sell_price||0), r.supplier || '', r.notes || '', req.params.id
+  );
+  res.json({ ok:true });
+});
+
+app.patch('/api/parts/:id/adjust', auth, (req, res) => {
+  const delta = Number(req.body.delta || 0);
+  const note = req.body.note || '';
+  const part = db.prepare('SELECT * FROM parts WHERE id=?').get(req.params.id);
+  if(!part) return res.status(404).json({ error:'Запчастину не знайдено' });
+  const newQty = Number(part.qty||0) + delta;
+  if(newQty < 0) return res.status(400).json({ error:'Залишок не може бути менше 0' });
+  db.prepare('UPDATE parts SET qty=? WHERE id=?').run(newQty, req.params.id);
+  db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)').run(req.params.id, delta >= 0 ? 'in' : 'out', Math.abs(delta), note);
+  res.json({ ok:true, qty:newQty });
+});
+
+app.delete('/api/parts/:id', auth, (req, res) => {
+  db.prepare('DELETE FROM parts WHERE id=?').run(req.params.id);
+  db.prepare('DELETE FROM stock_movements WHERE part_id=?').run(req.params.id);
+  res.json({ ok:true });
+});
+
+app.get('/api/parts/:id/movements', auth, (req, res) => {
+  res.json(db.prepare('SELECT * FROM stock_movements WHERE part_id=? ORDER BY created_at DESC LIMIT 50').all(req.params.id));
 });
 
 // MASTERS
