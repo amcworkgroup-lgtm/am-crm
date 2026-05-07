@@ -71,6 +71,19 @@ db.exec(`
     note TEXT DEFAULT '',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS repair_parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    repair_id TEXT NOT NULL,
+    part_id INTEGER NOT NULL,
+    part_name TEXT NOT NULL,
+    qty REAL DEFAULT 1,
+    unit_cost REAL DEFAULT 0,
+    unit_price REAL DEFAULT 0,
+    total_cost REAL DEFAULT 0,
+    total_price REAL DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 ['color','condition','internal_notes','photos TEXT DEFAULT "[]"'].forEach(col => {
