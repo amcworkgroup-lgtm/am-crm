@@ -436,6 +436,74 @@ select{background-color:var(--bg2);color:var(--text)}
 .wh-children{display:none}
 .wh-children.open{display:block}
 
+
+
+/* ══ SIDEBAR BUTTONS V13 — style like reference ══ */
+@media(min-width:901px){
+  .topbar{
+    width:260px!important;
+    padding:26px 14px 18px!important;
+    background:linear-gradient(180deg,#10151f 0%,#0c1119 100%)!important;
+    border-right:1px solid rgba(139,154,181,.18)!important;
+  }
+  .main{margin-left:260px!important;width:calc(100% - 260px)!important;}
+  .tlogo{
+    margin:0 0 28px 0!important;
+    padding:0 0 26px 0!important;
+    border-bottom:1px solid rgba(139,154,181,.12)!important;
+  }
+  .tnav{gap:12px!important;}
+  .tnav-b{
+    height:58px!important;
+    padding:0 16px!important;
+    border:1px solid transparent!important;
+    border-radius:14px!important;
+    background:transparent!important;
+    color:#9aa7bd!important;
+    font-size:15px!important;
+    font-weight:800!important;
+    letter-spacing:-.2px!important;
+    gap:14px!important;
+    box-shadow:none!important;
+    position:relative;
+    overflow:hidden;
+  }
+  .tnav-b .nav-ico{
+    width:22px;
+    min-width:22px;
+    height:22px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#9aa7bd;
+    font-size:22px;
+    line-height:1;
+    filter:grayscale(1);
+    opacity:.95;
+  }
+  .tnav-b:hover{
+    transform:none!important;
+    background:rgba(255,255,255,.035)!important;
+    color:#e8edf5!important;
+  }
+  .tnav-b:hover .nav-ico{color:#e8edf5;}
+  .tnav-b.on{
+    background:linear-gradient(90deg,rgba(249,115,22,.18),rgba(249,115,22,.055))!important;
+    border:1px solid rgba(249,115,22,.48)!important;
+    color:#f97316!important;
+    box-shadow:0 0 0 1px rgba(249,115,22,.08), inset 3px 0 0 #f97316!important;
+  }
+  .tnav-b.on .nav-ico{
+    color:#f97316!important;
+    filter:none;
+    opacity:1;
+  }
+  .tright{
+    border-top:1px solid rgba(139,154,181,.12)!important;
+    padding-top:16px!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -464,15 +532,15 @@ select{background-color:var(--bg2);color:var(--text)}
       </div>
     </div>
     <nav class="tnav">
-      <button class="tnav-b on"  onclick="go('dashboard')">🏠 Dashboard</button>
-      <button class="tnav-b"     onclick="go('repairs')">🔧 Ремонти</button>
-      <button class="tnav-b"     onclick="go('reminders')">⏰ Нагадування</button>
-      <button class="tnav-b"     onclick="go('clients')">👥 Клієнти</button>
-      <button class="tnav-b"     onclick="go('finance')">💰 Фінанси</button>
-      <button class="tnav-b"     onclick="go('warehouse')">📦 Склад</button>
-      <button class="tnav-b"     onclick="go('act')">🖨 Акт</button>
-      <button class="tnav-b"     onclick="go('stats')">📊 Статистика</button>
-      <button class="tnav-b"     onclick="go('settings')">⚙️ Налаштування</button>
+      <button class="tnav-b on"  onclick="go('dashboard')"><span class="nav-ico">⌂</span><span>Dashboard</span></button>
+      <button class="tnav-b"     onclick="go('repairs')"><span class="nav-ico">⌁</span><span>Ремонти</span></button>
+      <button class="tnav-b"     onclick="go('reminders')"><span class="nav-ico">◴</span><span>Нагадування</span></button>
+      <button class="tnav-b"     onclick="go('clients')"><span class="nav-ico">♟</span><span>Клієнти</span></button>
+      <button class="tnav-b"     onclick="go('finance')"><span class="nav-ico">▣</span><span>Фінанси</span></button>
+      <button class="tnav-b"     onclick="go('warehouse')"><span class="nav-ico">◈</span><span>Склад</span></button>
+      <button class="tnav-b"     onclick="go('act')"><span class="nav-ico">▤</span><span>Акт</span></button>
+      <button class="tnav-b"     onclick="go('stats')"><span class="nav-ico">▥</span><span>Статистика</span></button>
+      <button class="tnav-b"     onclick="go('settings')"><span class="nav-ico">⚙</span><span>Налаштування</span></button>
     </nav>
     <div class="tright">
       <span class="overdue-pill" id="overdue-pill" style="display:none"></span>
