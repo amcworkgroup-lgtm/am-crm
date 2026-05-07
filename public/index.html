@@ -184,7 +184,9 @@ tr.overdue-row:hover td{background:var(--rdim)}
 .paid{background:var(--gdim);color:var(--green)}
 .partial{background:var(--adim);color:var(--amber)}
 .unpaid{background:var(--rdim);color:var(--red)}
-.status-sel{background:transparent;border:none;color:inherit;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;padding:3px 8px;border-radius:20px;-webkit-appearance:none}
+.status-sel{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;padding:5px 10px;border-radius:20px;appearance:none;-webkit-appearance:none;outline:none}
+.status-sel option{background:#1b2230;color:#ffffff}
+select{background-color:var(--bg2);color:var(--text)}
 
 /* ══ MODAL ══ */
 .rep-tab{padding:7px 14px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;transition:all .15s;border-radius:0}
@@ -315,7 +317,7 @@ tr.overdue-row:hover td{background:var(--rdim)}
 .dash-chart{height:230px}.dash-chart.sm{height:205px}
 .mobile-bottom-nav{display:none}
 @media(max-width:900px){.dash-kpi{grid-template-columns:repeat(2,1fr)}.dash-grid,.dash-grid-2{grid-template-columns:1fr}.dash-chart{height:210px}}
-@media(max-width:600px){body{padding-bottom:72px}.topbar{height:64px}.tnav{display:none}.tright .tlogout{display:none}.main{padding:14px 12px 90px}.dash-head{margin-bottom:14px}.dash-title h1{font-size:28px}.dash-date{display:none}.dash-kpi{grid-template-columns:repeat(2,1fr);gap:10px}.dash-kpi .sc{min-height:116px;padding:14px;align-items:flex-start;flex-direction:column}.dash-kpi .sc-icon{width:44px;height:44px;border-radius:14px;font-size:22px}.dash-kpi .sc-v{font-size:28px}.dash-card{padding:15px;border-radius:16px}.mini-row{grid-template-columns:56px 1fr 70px;gap:8px}.mini-row .mini-device{display:none}.dash-chart{height:190px}.dash-chart.sm{height:180px}.mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg2);border-top:1.5px solid var(--border);padding:8px 6px 10px;z-index:400;box-shadow:0 -8px 22px rgba(0,0,0,.12)}.mbtn{border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.mbtn span{font-size:22px;line-height:1}.mbtn.on{color:var(--orange)}}
+@media(max-width:600px){body{padding-bottom:72px}.topbar{height:64px}.tnav{display:none}.tright .tlogout{display:none}.main{padding:14px 12px 90px}.dash-head{margin-bottom:14px}.dash-title h1{font-size:28px}.dash-date{display:none}.dash-kpi{grid-template-columns:repeat(2,1fr);gap:10px}.dash-kpi .sc{min-height:116px;padding:14px;align-items:flex-start;flex-direction:column}.dash-kpi .sc-icon{width:44px;height:44px;border-radius:14px;font-size:22px}.dash-kpi .sc-v{font-size:28px}.dash-card{padding:15px;border-radius:16px}.mini-row{grid-template-columns:56px 1fr 70px;gap:8px}.mini-row .mini-device{display:none}.dash-chart{height:190px}.dash-chart.sm{height:180px}.mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(6,1fr);background:var(--bg2);border-top:1.5px solid var(--border);padding:8px 4px 10px;z-index:400;box-shadow:0 -8px 22px rgba(0,0,0,.12)}.mbtn{border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:9px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}.mbtn span{font-size:20px;line-height:1}.mbtn.on{color:var(--orange)}}
 
 
 
@@ -362,6 +364,24 @@ tr.overdue-row:hover td{background:var(--rdim)}
 
 
 @media(max-width:900px){.stats-kpi-grid{grid-template-columns:repeat(2,1fr)!important}.stats-main-grid{grid-template-columns:1fr!important}}
+
+
+/* SETTINGS USERS + VISUAL BACKGROUND PATCH */
+.settings-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1100px}
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.settings-card h4{font-size:13px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.user-row{display:grid;grid-template-columns:1.2fr 1fr .9fr .8fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.user-row:last-child{border-bottom:none}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+.role-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;background:var(--bdim);color:var(--blue)}
+.role-admin{background:var(--orange-dim);color:var(--orange)}.role-finance{background:var(--gdim);color:var(--green)}.role-master{background:var(--pdim);color:var(--purple)}
+.visual-preview{height:170px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(135deg,#0f1117,#1e2535);overflow:hidden;position:relative;margin:12px 0;display:flex;align-items:center;justify-content:center}
+.visual-preview img{max-width:180px;max-height:100px;object-fit:contain;position:relative;z-index:2}.visual-preview:before{content:'';position:absolute;inset:0;background-image:var(--crm-bg-image);background-size:cover;background-position:center;opacity:.75}.visual-preview:after{content:'';position:absolute;inset:0;background:rgba(0,0,0,var(--crm-bg-overlay,.55))}
+body.custom-crm-bg:before{content:'';position:fixed;inset:0;background-image:var(--crm-bg-image);background-size:cover;background-position:center;z-index:-2}
+body.custom-crm-bg:after{content:'';position:fixed;inset:0;background:rgba(0,0,0,var(--crm-bg-overlay,.55));z-index:-1;pointer-events:none}
+body.custom-crm-bg{background:transparent!important}
+@media(max-width:900px){.settings-grid-2{grid-template-columns:1fr}.user-row{grid-template-columns:1fr;gap:6px}}
+
 </style>
 </head>
 <body>
@@ -410,7 +430,8 @@ tr.overdue-row:hover td{background:var(--rdim)}
     <button class="mbtn on" onclick="go('dashboard')"><span>🏠</span>Dashboard</button>
     <button class="mbtn" onclick="go('repairs')"><span>🛠️</span>Ремонти</button>
     <button class="mbtn" onclick="openNew()"><span>➕</span>Новий</button>
-    <button class="mbtn" onclick="go('clients')"><span>👥</span>Клієнти</button>
+    <button class="mbtn" onclick="go('finance')"><span>💰</span>Фінанси</button>
+    <button class="mbtn" onclick="go('stats')"><span>📊</span>Статистика</button>
     <button class="mbtn" onclick="go('reminders')"><span>⏰</span>Більше</button>
   </div>
 </div>
@@ -418,9 +439,9 @@ tr.overdue-row:hover td{background:var(--rdim)}
 <script>
 let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='dashboard';
-let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]};
+let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},users=[];
 let settings={};
-let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',statsMaster='',statsFrom='',statsTo='';
+let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='';
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null;
 
@@ -479,7 +500,8 @@ async function loadAllRepairs(){
 }
 async function loadStats(){stats=await api('GET','/api/stats')||{};}
 async function loadMasters(){masters=await api('GET','/api/masters')||[];}
-async function loadSettings(){settings=await api('GET','/api/settings')||{};applyAccent();}
+async function loadSettings(){settings=await api('GET','/api/settings')||{};applyAccent();applyVisualSettings();}
+async function loadUsers(){users=await api('GET','/api/users')||[];}
 async function loadClients(q=''){clients=await api('GET','/api/clients?search='+encodeURIComponent(q))||[];}
 async function loadExpenses(){expenses=await api('GET','/api/expenses?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||[];}
 async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||{rows:[]};}
@@ -488,11 +510,12 @@ async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from
 function go(tab){
   TAB=tab;
   document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','act','stats','settings'][i]===tab));
-  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','new','clients','reminders'][i]===tab));
+  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','new','finance','stats','reminders'][i]===tab));
   if(tab==='clients') loadClients().then(render);
   else if(tab==='finance') Promise.all([loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
   else if(tab==='stats') loadStats().then(render);
   else if(tab==='dashboard') loadStats().then(render);
+  else if(tab==='settings') Promise.all([loadSettings(),loadUsers()]).then(render);
   else render();
 }
 
@@ -1168,85 +1191,201 @@ function closeModalC(){const m=document.getElementById('modal-r');if(m)m.innerHT
 // FINANCE TAB
 // ════════════════════════════════
 function renderFinance(){
-  const monthly=stats.monthly||[];
-  const filtExp=expenses.filter(e=>{if(finFrom&&e.date<finFrom)return false;if(finTo&&e.date>finTo)return false;return true;});
-  const filtCash=(cash.rows||[]).filter(c=>{if(finFrom&&c.date<finFrom)return false;if(finTo&&c.date>finTo)return false;return true;});
-  const mRows=monthly.map(m=>`<tr>
-    <td style="font-family:var(--mono)">${m.month}</td><td>${m.count}</td>
-    <td style="font-family:var(--mono)">${(+m.revenue).toLocaleString()} ₴</td>
-    <td style="font-family:var(--mono)">${(+m.cost).toLocaleString()} ₴</td>
-    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
-  </tr>`).join('');
-  const expRows=filtExp.length?filtExp.map(e=>`<tr>
-    <td>${e.date}</td><td>${e.category}</td><td>${e.description}</td>
-    <td style="font-family:var(--mono);color:var(--red)">${(+e.amount).toLocaleString()} ₴</td>
-    <td>${e.repair_id||'—'}</td>
-    <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
-  </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Витрат немає</td></tr>`;
-  const cashRows=filtCash.length?filtCash.map(c=>`<tr>
-    <td>${c.date}</td>
-    <td style="color:${c.type==='in'?'var(--green)':'var(--red)'}">${c.type==='in'?'+':'−'}</td>
-    <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'}">${(+c.amount).toLocaleString()} ₴</td>
-    <td><span class="badge ${c.method==='Готівка'?'ready':'diag'}">${c.method}</span></td>
-    <td>${c.description||'—'}</td>
-  </tr>`).join(''):`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>`;
-  const byMaster=(stats.byMaster||[]).map(m=>`<tr>
-    <td>${m.master}</td><td>${m.c}</td>
-    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${(+m.profit).toLocaleString()} ₴</td>
-  </tr>`).join('');
-  const weekMap={};
-  (cash.rows||[]).forEach(c=>{const d=new Date(c.date);d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};if(c.type==='in')weekMap[wk].in+=(+c.amount||0);else weekMap[wk].out+=(+c.amount||0);});
-  const weekLabels=Object.keys(weekMap).sort().slice(-12);
-  // KPI — якщо є фільтр дат, рахуємо з локальних даних
-  const hasDateFilter = finFrom||finTo;
-  const periodRepairs = repairs.filter(r=>{
-    if(finFrom && (r.date_in||'')<finFrom) return false;
-    if(finTo && (r.date_in||'')>finTo) return false;
-    return r.pay_status==='Оплачено';
-  });
-  const kpiRevenue = hasDateFilter ? periodRepairs.reduce((s,r)=>s+(+r.price||0),0) : (stats.monthRevenue||0);
-  const kpiCost = hasDateFilter ? periodRepairs.reduce((s,r)=>s+(+r.cost||0),0) : (stats.monthCost||0);
-  const kpiExp = hasDateFilter ? filtExp.reduce((s,e)=>s+(+e.amount||0),0) : (stats.monthExpenses||0);
-  const kpiProfit = kpiRevenue - kpiCost - kpiExp;
-  const kpiLabel = hasDateFilter ? 'Оплачено (фільтр)' : 'Оплачено (міс.)';
+  const money = v => Number(v||0);
+  const dateOfRepair = r => String((r.date_out || r.date_in || r.created_at || '')).slice(0,10);
+  const inDate = d => (!finFrom || String(d||'') >= finFrom) && (!finTo || String(d||'') <= finTo);
+  const byMasterFilter = r => !finMaster || (r.master || '') === finMaster;
+  const isPaidLike = r => ['Оплачено','Частково'].includes(r.pay_status) && money(r.price) > 0;
+  const methodNorm = m => {
+    m = (m || 'Готівка').trim();
+    if(['Картка','Переказ','Безготівка','Безнал','Mono','Privat','Термінал'].includes(m)) return m;
+    return 'Готівка';
+  };
+  const isCashMethod = m => methodNorm(m) === 'Готівка';
+  const isCardMethod = m => !isCashMethod(m);
+  const masterOptions = `<option value="">Всі майстри</option>` + masters.map(m=>`<option value="${m.name}" ${finMaster===m.name?'selected':''}>${m.name}</option>`).join('');
+
+  const paidRepairs = getAllRepairs().filter(r => isPaidLike(r) && inDate(dateOfRepair(r)) && byMasterFilter(r));
+  const allFilteredRepairs = getAllRepairs().filter(r => inDate(dateOfRepair(r)) && byMasterFilter(r));
+  const filtExp = expenses.filter(e => inDate(e.date));
+  const filtCash = (cash.rows||[]).filter(c => inDate(c.date));
+
+  const payRowsData = paidRepairs.filter(r => {
+    if(finPayMethod){
+      if(finPayMethod === 'Безготівка' && !isCardMethod(r.pay_method)) return false;
+      else if(finPayMethod !== 'Безготівка' && methodNorm(r.pay_method) !== finPayMethod) return false;
+    }
+    if(finPayStatus && r.pay_status !== finPayStatus) return false;
+    return true;
+  }).sort((a,b)=>dateOfRepair(b).localeCompare(dateOfRepair(a)));
+
+  const revenue = paidRepairs.reduce((s,r)=>s+money(r.price),0);
+  const cost = paidRepairs.reduce((s,r)=>s+money(r.cost),0);
+  const expSum = filtExp.reduce((s,e)=>s+money(e.amount),0);
+  const profit = revenue - cost - expSum;
+  const cashIncome = paidRepairs.filter(r=>isCashMethod(r.pay_method)).reduce((s,r)=>s+money(r.price),0);
+  const cardIncome = paidRepairs.filter(r=>isCardMethod(r.pay_method)).reduce((s,r)=>s+money(r.price),0);
+  const debt = allFilteredRepairs.filter(r => r.pay_status !== 'Оплачено' && money(r.price)>0).reduce((s,r)=>s+money(r.price),0);
+  const avg = paidRepairs.length ? Math.round(revenue / paidRepairs.length) : 0;
+
+  const dateMasterFilter = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    <span style="font-size:12px;color:var(--text2);font-weight:700">Фільтр:</span>
+    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render();setTimeout(initCharts,50)" style="width:145px"/>
+    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render();setTimeout(initCharts,50)" style="width:145px"/>
+    <select class="sel" onchange="finMaster=this.value;render();setTimeout(initCharts,50)" style="width:170px">${masterOptions}</select>
+    <button class="btn sm" onclick="finFrom='';finTo='';finMaster='';finPayMethod='';finPayStatus='';render();setTimeout(initCharts,50)">Скинути</button>
+  </div>`;
+
   const kpis=`<div class="cash-cards">
-    <div class="cash-card"><div class="cash-lbl">${kpiLabel}</div><div class="cash-val green">${kpiRevenue.toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Собівартість + витрати</div><div class="cash-val red">${(kpiCost+kpiExp).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Прибуток${hasDateFilter?' (фільтр)':' (міс.)'}</div><div class="cash-val amber">${kpiProfit.toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${(stats.cashBalance||0).toLocaleString()} ₴</div></div>
-    <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${(stats.cardBalance||0).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Оплачено</div><div class="cash-val green">${revenue.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Собівартість + витрати</div><div class="cash-val red">${(cost+expSum).toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Прибуток</div><div class="cash-val amber">${profit.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${cashIncome.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${cardIncome.toLocaleString()} ₴</div></div>
   </div>`;
-  const dateFilter=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-    <span style="font-size:12px;color:var(--text2)">Фільтр:</span>
-    <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render()" style="width:140px"/>
-    <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render()" style="width:140px"/>
-    <button class="btn sm" onclick="finFrom='';finTo='';render()">Скинути</button>
+
+  const extraKpis=`<div class="cash-cards" style="grid-template-columns:repeat(4,1fr)">
+    <div class="cash-card"><div class="cash-lbl">Середній чек</div><div class="cash-val blue">${avg.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Борги</div><div class="cash-val red">${debt.toLocaleString()} ₴</div></div>
+    <div class="cash-card"><div class="cash-lbl">Платежів</div><div class="cash-val green">${paidRepairs.length}</div></div>
+    <div class="cash-card"><div class="cash-lbl">Витрати</div><div class="cash-val red">${expSum.toLocaleString()} ₴</div></div>
   </div>`;
+
   const tabs=`<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
     <button class="rep-tab ${finTab==='overview'?'on':''}" onclick="finTab='overview';render();setTimeout(initCharts,50)">📊 Огляд</button>
     <button class="rep-tab ${finTab==='history'?'on':''}" onclick="finTab='history';render();setTimeout(initPayHistory,50)">📈 Платежі</button>
     <button class="rep-tab ${finTab==='expenses'?'on':''}" onclick="finTab='expenses';render()">💸 Витрати</button>
     <button class="rep-tab ${finTab==='cash'?'on':''}" onclick="finTab='cash';render()">🏦 Каса</button>
   </div>`;
+
+  const months = [];
+  const now = new Date();
+  for(let i=11;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push(d.toISOString().slice(0,7));
+  }
+  const monthly = months.map(month=>{
+    const mr = paidRepairs.filter(r => dateOfRepair(r).slice(0,7) === month);
+    const e = filtExp.filter(x => String(x.date||'').slice(0,7) === month).reduce((s,x)=>s+money(x.amount),0);
+    const rev = mr.reduce((s,r)=>s+money(r.price),0);
+    const co = mr.reduce((s,r)=>s+money(r.cost),0);
+    return {month, count:mr.length, revenue:rev, cost:co, expenses:e, profit:rev-co-e};
+  });
+  window._financeMonthly = monthly;
+
+  const masterMap = {};
+  paidRepairs.forEach(r=>{
+    const m = r.master || 'Без майстра';
+    if(!masterMap[m]) masterMap[m]={c:0,revenue:0,profit:0};
+    masterMap[m].c++;
+    masterMap[m].revenue += money(r.price);
+    masterMap[m].profit += money(r.price)-money(r.cost);
+  });
+  const byMaster = Object.entries(masterMap).sort((a,b)=>b[1].profit-a[1].profit).map(([name,m])=>`<tr>
+    <td>${name}</td><td>${m.c}</td>
+    <td style="font-family:var(--mono);color:var(--green)">${m.revenue.toLocaleString()} ₴</td>
+    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${m.profit.toLocaleString()} ₴</td>
+  </tr>`).join('');
+
+  const mRows = monthly.filter(m=>m.count||m.revenue||m.expenses).reverse().map(m=>`<tr>
+    <td style="font-family:var(--mono)">${m.month}</td><td>${m.count}</td>
+    <td style="font-family:var(--mono)">${m.revenue.toLocaleString()} ₴</td>
+    <td style="font-family:var(--mono)">${(m.cost+m.expenses).toLocaleString()} ₴</td>
+    <td style="font-family:var(--mono);color:${m.profit>=0?'var(--green)':'var(--red)'}">${m.profit.toLocaleString()} ₴</td>
+  </tr>`).join('');
+
   let tabContent='';
-  if(finTab==='overview'){tabContent=`${dateFilter}${kpis}
+  if(finTab==='overview'){
+    tabContent=`${dateMasterFilter}${kpis}${extraKpis}
     <div class="fin-grid">
       <div class="fin-block"><h4>Прибуток по місяцях</h4><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
       <div class="fin-block"><h4>По майстрах</h4><div class="twrap" style="margin:0"><table style="min-width:0">
-        <thead><tr><th>Майстер</th><th>Ремонтів</th><th>Прибуток</th></tr></thead>
-        <tbody>${byMaster||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">—</td></tr>'}</tbody>
+        <thead><tr><th>Майстер</th><th>Оплат</th><th>Виручка</th><th>Прибуток</th></tr></thead>
+        <tbody>${byMaster||'<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3)">Немає даних</td></tr>'}</tbody>
       </table></div></div>
     </div>
     <div class="fin-block" style="margin-top:16px"><h4>По місяцях</h4><div class="twrap" style="margin:0"><table style="min-width:0">
-      <thead><tr><th>Місяць</th><th>Ремонтів</th><th>Виручка</th><th>Собівартість</th><th>Прибуток</th></tr></thead>
-      <tbody>${mRows}</tbody>
-    </table></div></div>`;}
+      <thead><tr><th>Місяць</th><th>Оплат</th><th>Виручка</th><th>Собівартість + витрати</th><th>Прибуток</th></tr></thead>
+      <tbody>${mRows||'<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text3)">Немає даних</td></tr>'}</tbody>
+    </table></div></div>`;
+  }
   else if(finTab==='history'){
-    const wd=JSON.stringify({labels:weekLabels,in:weekLabels.map(w=>weekMap[w].in),out:weekLabels.map(w=>weekMap[w].out)});
-    tabContent=`${kpis}<div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div><script>window._payWeeks=${wd};<\/script>`;}
-  else if(finTab==='expenses'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;}
-  else if(finTab==='cash'){tabContent=`${dateFilter}<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Рух коштів (каса)</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Опис</th></tr></thead><tbody>${cashRows}</tbody></table></div></div>`;}
+    const payFilter=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <input class="inp" type="date" value="${finFrom}" onchange="finFrom=this.value;render();setTimeout(initPayHistory,50)" style="width:145px"/>
+      <input class="inp" type="date" value="${finTo}" onchange="finTo=this.value;render();setTimeout(initPayHistory,50)" style="width:145px"/>
+      <select class="sel" onchange="finMaster=this.value;render();setTimeout(initPayHistory,50)" style="width:170px">${masterOptions}</select>
+      <select class="sel" onchange="finPayMethod=this.value;render();setTimeout(initPayHistory,50)" style="width:150px">
+        <option value="" ${!finPayMethod?'selected':''}>Всі методи</option><option ${finPayMethod==='Готівка'?'selected':''}>Готівка</option><option ${finPayMethod==='Картка'?'selected':''}>Картка</option><option ${finPayMethod==='Переказ'?'selected':''}>Переказ</option><option value="Безготівка" ${finPayMethod==='Безготівка'?'selected':''}>Вся безготівка</option>
+      </select>
+      <select class="sel" onchange="finPayStatus=this.value;render();setTimeout(initPayHistory,50)" style="width:150px">
+        <option value="" ${!finPayStatus?'selected':''}>Всі статуси</option><option ${finPayStatus==='Оплачено'?'selected':''}>Оплачено</option><option ${finPayStatus==='Частково'?'selected':''}>Частково</option>
+      </select>
+      <button class="btn sm" onclick="finFrom='';finTo='';finMaster='';finPayMethod='';finPayStatus='';render();setTimeout(initPayHistory,50)">Скинути</button>
+      <button class="btn sm green" onclick="exportFinancePaymentsCSV()">↓ CSV</button>
+    </div>`;
+    const rows = payRowsData.map(r=>`<tr>
+      <td>${dateOfRepair(r)||'—'}</td><td class="tid">${r.id}</td><td><b>${r.client||'—'}</b><div class="tp">${r.phone||''}</div></td>
+      <td>${r.type||''} ${r.model||''}</td><td>${r.master||'—'}</td>
+      <td><span class="badge ${isCashMethod(r.pay_method)?'ready':'diag'}">${methodNorm(r.pay_method)}</span></td>
+      <td><span class="badge ${PB[r.pay_status]||'paid'}">${r.pay_status}</span></td>
+      <td style="font-family:var(--mono);color:var(--green)">${money(r.price).toLocaleString()} ₴</td>
+      <td style="font-size:12px;color:var(--text2)">Ремонт ${r.id}</td>
+    </tr>`).join('');
+    const weekMap={};
+    payRowsData.forEach(r=>{const d=new Date(dateOfRepair(r)||todayISO());d.setDate(d.getDate()-d.getDay()+1);const wk=d.toISOString().slice(0,10);if(!weekMap[wk])weekMap[wk]={in:0,out:0};weekMap[wk].in+=money(r.price);});
+    const weekLabels=Object.keys(weekMap).sort().slice(-12);
+    window._payWeeks={labels:weekLabels,in:weekLabels.map(w=>weekMap[w].in),out:weekLabels.map(w=>0)};
+    window._financePayments = payRowsData;
+    tabContent=`${payFilter}${kpis}<div class="fin-block" style="margin-top:16px"><h4>Надходження по тижнях</h4><div class="chart-wrap"><canvas id="chart-payhistory"></canvas></div></div>
+      <div class="fin-block" style="margin-top:16px"><h4>Платежі</h4><div class="twrap" style="margin:0"><table style="min-width:900px"><thead><tr><th>Дата</th><th>ID</th><th>Клієнт</th><th>Пристрій</th><th>Майстер</th><th>Метод</th><th>Статус</th><th>Сума</th><th>Звідки</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:22px;color:var(--text3)">Платежів немає</td></tr>'}</tbody></table></div></div>`;
+  }
+  else if(finTab==='expenses'){
+    const expRows=filtExp.length?filtExp.map(e=>`<tr>
+      <td>${e.date}</td><td>${e.category}</td><td>${e.description}</td>
+      <td style="font-family:var(--mono);color:var(--red)">${money(e.amount).toLocaleString()} ₴</td>
+      <td>${e.repair_id||'—'}</td>
+      <td><button class="btn xs red" onclick="delExpense(${e.id})">✕</button></td>
+    </tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Витрат немає</td></tr>`;
+    tabContent=`${dateMasterFilter}<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"><div class="cash-card"><div class="cash-lbl">Витрати за фільтром</div><div class="cash-val red">${expSum.toLocaleString()} ₴</div></div></div>
+      <div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Витрати</div><button class="btn sm blue" onclick="openAddExpense()">+ Витрата</button></div><div class="twrap"><table style="min-width:0"><thead><tr><th>Дата</th><th>Категорія</th><th>Опис</th><th>Сума</th><th>Ремонт</th><th></th></tr></thead><tbody>${expRows}</tbody></table></div></div>`;
+  }
+  else if(finTab==='cash'){
+    const generated = paidRepairs.map(r=>({date:dateOfRepair(r),type:'in',amount:money(r.price),method:methodNorm(r.pay_method),description:`Оплата ремонту ${r.id} — ${r.type||''} ${r.model||''}`,repair_id:r.id,master:r.master||'',source:'repair'}));
+    const expenseMovements = filtExp.map(e=>({date:e.date,type:'out',amount:money(e.amount),method:'Витрата',description:`${e.category}: ${e.description||''}`,repair_id:e.repair_id||'',master:'',source:'expense'}));
+    const manual = filtCash.filter(c=>!String(c.description||'').startsWith('Оплата R')).map(c=>({...c,source:'manual'}));
+    const movements = [...generated,...expenseMovements,...manual].filter(x=>!finMaster || !x.master || x.master===finMaster).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    const cashIn = movements.filter(x=>x.type==='in'&&isCashMethod(x.method)).reduce((s,x)=>s+money(x.amount),0);
+    const cardIn = movements.filter(x=>x.type==='in'&&isCardMethod(x.method)).reduce((s,x)=>s+money(x.amount),0);
+    const out = movements.filter(x=>x.type==='out').reduce((s,x)=>s+money(x.amount),0);
+    const rows=movements.map(c=>`<tr>
+      <td>${c.date||'—'}</td>
+      <td style="color:${c.type==='in'?'var(--green)':'var(--red)'};font-weight:800">${c.type==='in'?'+':'−'}</td>
+      <td style="font-family:var(--mono);color:${c.type==='in'?'var(--green)':'var(--red)'}">${money(c.amount).toLocaleString()} ₴</td>
+      <td><span class="badge ${isCashMethod(c.method)?'ready':'diag'}">${c.method||'—'}</span></td>
+      <td>${c.master||'—'}</td>
+      <td>${c.description||'—'} ${c.repair_id?`<span class="tid">${c.repair_id}</span>`:''}</td>
+    </tr>`).join('');
+    tabContent=`${dateMasterFilter}<div class="cash-cards" style="grid-template-columns:repeat(4,1fr)">
+        <div class="cash-card"><div class="cash-lbl">Готівка</div><div class="cash-val purple">${cashIn.toLocaleString()} ₴</div></div>
+        <div class="cash-card"><div class="cash-lbl">Безготівка</div><div class="cash-val blue">${cardIn.toLocaleString()} ₴</div></div>
+        <div class="cash-card"><div class="cash-lbl">Витрати</div><div class="cash-val red">${out.toLocaleString()} ₴</div></div>
+        <div class="cash-card"><div class="cash-lbl">Баланс</div><div class="cash-val green">${(cashIn+cardIn-out).toLocaleString()} ₴</div></div>
+      </div>
+      <div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="section-title" style="margin:0">Вся каса</div><button class="btn sm blue" onclick="openAddCash()">+ Запис</button></div><div class="twrap"><table style="min-width:820px"><thead><tr><th>Дата</th><th>+/−</th><th>Сума</th><th>Метод</th><th>Майстер</th><th>Опис</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Рухів немає</td></tr>'}</tbody></table></div></div>`;
+  }
   return`${tabs}${tabContent}<div id="modal-f"></div>`;
+}
+
+function exportFinancePaymentsCSV(){
+  const rows = window._financePayments || [];
+  const money = v => Number(v||0);
+  const dateOfRepair = r => String((r.date_out || r.date_in || r.created_at || '')).slice(0,10);
+  const methodNorm = m => (m || 'Готівка').trim();
+  const header=['Дата','ID','Клієнт','Телефон','Пристрій','Майстер','Метод','Статус','Сума','Звідки'];
+  const csv=[header,...rows.map(r=>[dateOfRepair(r),r.id,r.client||'',r.phone||'',`${r.type||''} ${r.model||''}`.trim(),r.master||'',methodNorm(r.pay_method),r.pay_status||'',money(r.price),`Ремонт ${r.id}`])]
+    .map(a=>a.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='am_store_payments.csv';a.click();
 }
 
 function initPayHistory(){
@@ -1519,6 +1658,18 @@ function applyAccent(){
   if(el && settings.shop_name) el.textContent = settings.shop_name;
 }
 
+function applyVisualSettings(){
+  document.body.classList.remove('custom-crm-bg');
+  document.body.style.removeProperty('--crm-bg-image');
+  document.body.style.removeProperty('--crm-bg-overlay');
+  if(settings.bg_enabled==='1' && settings.bg_image){
+    document.body.classList.add('custom-crm-bg');
+    document.body.style.setProperty('--crm-bg-image', `url('${settings.bg_image}')`);
+    const op = Math.max(0, Math.min(90, Number(settings.bg_overlay || 55))) / 100;
+    document.body.style.setProperty('--crm-bg-overlay', op);
+  }
+}
+
 const ACCENT_COLORS = [
   {name:'Оранжевий',val:'#e8580a'},
   {name:'Синій',val:'#2563eb'},
@@ -1547,7 +1698,48 @@ function renderSettings(){
       style="width:32px;height:32px;border-radius:50%;background:${c.val};border:3px solid ${(s.accent_color||'#e8580a')===c.val?'var(--text)':'transparent'};cursor:pointer;transition:border .15s"></button>
   `).join('');
 
-  return`<div style="max-width:560px;display:flex;flex-direction:column;gap:14px">
+  const roleName={admin:'Адмін',manager:'Менеджер',master:'Майстер',finance:'Фінансист'};
+  const usersHtml=(users||[]).map(u=>`
+    <div class="user-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="user-avatar">${(u.name||u.login||'U').slice(0,1).toUpperCase()}</div>
+        <div><div style="font-weight:800">${u.name||'—'}</div><div style="font-size:11px;color:var(--text2)">${u.active?'Активний':'Вимкнений'}</div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2)">${u.login||'—'}</div>
+      <div><span class="role-badge role-${u.role||'manager'}">${roleName[u.role]||u.role||'Менеджер'}</span></div>
+      <div>${u.active?'<span class="badge paid">ON</span>':'<span class="badge unpaid">OFF</span>'}</div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn xs" onclick="openUserModal(${u.id})">Ред.</button>
+        <button class="btn xs red" onclick="deleteUser(${u.id})">✕</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--text3);padding:18px 0;text-align:center">Користувачів ще немає</div>';
+
+  return`<div style="display:flex;flex-direction:column;gap:14px;max-width:1100px">
+
+    <div class="settings-grid-2">
+      <div class="settings-card">
+        <h4>👥 Користувачі та ролі</h4>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Без привʼязки до майстра. Поточний вхід по основному паролю не змінюється.</div>
+        <div>${usersHtml}</div>
+        <button class="btn orange" style="margin-top:12px" onclick="openUserModal()">+ Додати користувача</button>
+      </div>
+
+      <div class="settings-card">
+        <h4>🖼️ Візуальні налаштування</h4>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:700">
+          <input type="checkbox" id="s-bg_enabled" ${s.bg_enabled==='1'?'checked':''}> Використовувати фон CRM
+        </label>
+        <div class="visual-preview" style="--crm-bg-image:url('${s.bg_image||''}');--crm-bg-overlay:${(Number(s.bg_overlay||55)/100)}">
+          <img src="logo.png" onerror="this.src='logo.jpg'" alt="AM Store">
+        </div>
+        <div class="frow" style="margin-bottom:10px"><label>Фонове зображення</label><input class="inp" type="file" id="bg-file" accept="image/*"></div>
+        <div class="frow" style="margin-bottom:10px"><label>Темний overlay: <span id="overlay-val">${s.bg_overlay||55}%</span></label><input type="range" id="s-bg_overlay" min="0" max="90" value="${s.bg_overlay||55}" oninput="document.getElementById('overlay-val').textContent=this.value+'%'" style="width:100%"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn orange" onclick="saveVisualSettings()">Зберегти фон</button>
+          <button class="btn red" onclick="removeBackground()">Видалити фон</button>
+        </div>
+      </div>
+    </div>
 
     <!-- МАГАЗИН -->
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
@@ -1570,7 +1762,7 @@ function renderSettings(){
       </div>
       <div>${mList||'<div style="color:var(--text3);font-size:13px;padding:8px 0">Немає майстрів</div>'}</div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="inp" id="new-master" style="flex:1" placeholder="Ім'я майстра..." onkeydown="if(event.key==='Enter')addMaster()"/>
+        <input class="inp" id="new-master" style="flex:1" placeholder="Ім\'я майстра..." onkeydown="if(event.key==='Enter')addMaster()"/>
         <button class="btn blue" onclick="addMaster()">Додати</button>
       </div>
     </div>
@@ -1578,7 +1770,7 @@ function renderSettings(){
     <!-- ШАБЛОНИ -->
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
       <h4 style="font-size:13px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px">📋 Шаблони повідомлень</h4>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Змінні: <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{client}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{type}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{model}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{id}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{price}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{phone}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{days}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{shop_name}</code></div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Змінні: <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{client}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{type}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{model}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{id}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{price}</code></div>
       <div class="fg" style="grid-template-columns:1fr;gap:10px">
         <div class="frow"><label>✅ Готово до видачі</label><textarea class="area" id="s-msg_ready" style="min-height:60px">${s.msg_ready||''}</textarea></div>
         <div class="frow"><label>🔧 Прийнято в ремонт</label><textarea class="area" id="s-msg_accept" style="min-height:60px">${s.msg_accept||''}</textarea></div>
@@ -1625,7 +1817,6 @@ function renderSettings(){
 
   </div>`;
 }
-
 async function saveSettings(keys){
   const body={};
   keys.forEach(k=>{
@@ -1684,6 +1875,73 @@ async function addMaster(){
 async function delMaster(id){
   if(!confirm('Видалити майстра?'))return;
   await api('DELETE','/api/masters/'+id);await loadMasters();render();
+}
+
+
+async function openUserModal(id=null){
+  const u = id ? (users||[]).find(x=>String(x.id)===String(id)) : null;
+  const html = `<div class="modal-ov" id="user-modal">
+    <div class="modal sm">
+      <h3>${id?'Редагувати користувача':'Додати користувача'}</h3>
+      <div class="fg" style="grid-template-columns:1fr;gap:10px">
+        <div class="frow"><label>Ім'я</label><input class="inp" id="u-name" value="${u?.name||''}" placeholder="Наприклад: Адмін"></div>
+        <div class="frow"><label>Логін</label><input class="inp" id="u-login" value="${u?.login||''}" placeholder="admin"></div>
+        <div class="frow"><label>Пароль</label><input class="inp" id="u-password" type="password" value="${u?.password||''}" placeholder="Пароль"></div>
+        <div class="frow"><label>Роль</label><select class="sel" id="u-role">
+          <option value="admin" ${u?.role==='admin'?'selected':''}>Адмін</option>
+          <option value="manager" ${!u||u?.role==='manager'?'selected':''}>Менеджер</option>
+          <option value="master" ${u?.role==='master'?'selected':''}>Майстер</option>
+          <option value="finance" ${u?.role==='finance'?'selected':''}>Фінансист</option>
+        </select></div>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="u-active" ${!u||u.active?'checked':''}> Активний</label>
+      </div>
+      <div class="mfoot">
+        <button class="btn" onclick="document.getElementById('user-modal').remove()">Скасувати</button>
+        <button class="btn orange" onclick="saveUser(${id||'null'})">Зберегти</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveUser(id=null){
+  const body={
+    name:document.getElementById('u-name').value.trim(),
+    login:document.getElementById('u-login').value.trim(),
+    password:document.getElementById('u-password').value,
+    role:document.getElementById('u-role').value,
+    active:document.getElementById('u-active').checked?1:0
+  };
+  if(!body.login){alert('Вкажіть логін');return;}
+  const res = id ? await api('PUT','/api/users/'+id,body) : await api('POST','/api/users',body);
+  if(res && res.error){alert(res.error);return;}
+  const modal=document.getElementById('user-modal'); if(modal) modal.remove();
+  await loadUsers(); render(); showToast('✓ Користувача збережено');
+}
+
+async function deleteUser(id){
+  if(!confirm('Видалити користувача?'))return;
+  await api('DELETE','/api/users/'+id);
+  await loadUsers(); render(); showToast('✓ Користувача видалено');
+}
+
+async function saveVisualSettings(){
+  const enabled=document.getElementById('s-bg_enabled').checked?'1':'0';
+  const overlay=document.getElementById('s-bg_overlay').value;
+  const file=document.getElementById('bg-file').files[0];
+  await api('PUT','/api/settings',{bg_enabled:enabled,bg_overlay:overlay});
+  if(file){
+    const fd=new FormData(); fd.append('background',file);
+    const res=await apiForm('/api/settings/background',fd);
+    if(res && res.url) settings.bg_image=res.url;
+  }
+  await loadSettings(); render(); showToast('✓ Візуальні налаштування збережено');
+}
+
+async function removeBackground(){
+  if(!confirm('Видалити фонове зображення?'))return;
+  await api('DELETE','/api/settings/background');
+  await loadSettings(); render(); showToast('✓ Фон видалено');
 }
 
 // ── THEME ──
