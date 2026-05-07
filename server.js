@@ -185,9 +185,10 @@ app.put('/api/repairs/:id', auth, (req, res) => {
 
 app.patch('/api/repairs/:id/status', auth, (req, res) => { db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); res.json({ ok:true }); });
 app.patch('/api/repairs/:id/pay', auth, (req, res) => {
-  const {pay_status, pay_method} = req.body;
   const repair = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
   if(!repair) return res.status(404).json({error:'Not found'});
+  const pay_status = req.body.pay_status || repair.pay_status || 'Не оплачено';
+  const pay_method = req.body.pay_method !== undefined ? req.body.pay_method : (repair.pay_method || '');
   db.prepare('UPDATE repairs SET pay_status=?,pay_method=? WHERE id=?').run(pay_status, pay_method||'', req.params.id);
   // Автозапис в касу при оплаті
   if(pay_status === 'Оплачено' && repair.pay_status !== 'Оплачено' && repair.price > 0){
