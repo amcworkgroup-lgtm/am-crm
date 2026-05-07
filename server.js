@@ -278,27 +278,6 @@ app.get('/api/stats', auth, (req, res) => {
 
 // SETTINGS
 db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`);
-
-// USERS FOR SETTINGS PANEL (not changing existing login flow)
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT DEFAULT '',
-    login TEXT UNIQUE,
-    password TEXT DEFAULT '',
-    role TEXT DEFAULT 'manager',
-    active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-['name TEXT DEFAULT ""','role TEXT DEFAULT "manager"','active INTEGER DEFAULT 1'].forEach(col => {
-  try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch(e) {}
-});
-try {
-  const uc = db.prepare('SELECT COUNT(*) as c FROM users').get();
-  if (uc.c === 0) db.prepare('INSERT OR IGNORE INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run('Адмін','admin','', 'admin', 1);
-} catch(e) {}
-
 const DEFAULT_SETTINGS = {
   shop_name: 'AM Store',
   shop_phone: '073 477 30 90',
@@ -311,9 +290,6 @@ const DEFAULT_SETTINGS = {
   msg_debt: 'Нагадуємо про оплату за ремонт {id} ({type} {model}) — {price} ₴. Будь ласка, завітайте до нас. {shop_name}',
   msg_overdue: 'Нагадуємо! Ваш {type} {model} (замовлення {id}) очікує вас вже {days} днів. Будь ласка, заберіть пристрій. {shop_name}, тел. {phone}',
   master_rate: '40',
-  bg_enabled: '0',
-  bg_image: '',
-  bg_overlay: '55',
 };
 Object.entries(DEFAULT_SETTINGS).forEach(([k,v]) => {
   try { db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)').run(k,v); } catch(e){}
@@ -331,47 +307,61 @@ app.put('/api/settings', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// SETTINGS: USERS (visual/admin list only, current single-password login stays unchanged)
+// USERS FOR SETTINGS TAB (does not change current login system)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    username TEXT UNIQUE,
+    password TEXT,
+    role TEXT DEFAULT 'manager',
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+try {
+  const uc = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  if (uc === 0) {
+    db.prepare('INSERT OR IGNORE INTO users(name,username,password,role,active) VALUES(?,?,?,?,1)').run('Адмін','admin','', 'admin');
+  }
+} catch(e) {}
+
 app.get('/api/users', auth, (req, res) => {
-  const rows = db.prepare('SELECT id,name,login,role,active,created_at FROM users ORDER BY id DESC').all();
+  const rows = db.prepare('SELECT id,name,username,role,active,created_at FROM users ORDER BY id ASC').all();
   res.json(rows);
 });
 app.post('/api/users', auth, (req, res) => {
-  const { name='', login, password='', role='manager', active=1 } = req.body;
-  if (!login) return res.status(400).json({ error: 'Вкажіть логін' });
+  const { name, username, password, role, active } = req.body;
+  if (!name || !username || !password) return res.status(400).json({ error:'Заповніть ім’я, логін і пароль' });
   try {
-    const info = db.prepare('INSERT INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run(name, login, password, role, active ? 1 : 0);
-    res.json({ ok:true, id: info.lastInsertRowid });
-  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
+    db.prepare('INSERT INTO users(name,username,password,role,active) VALUES(?,?,?,?,?)').run(String(name).trim(), String(username).trim(), String(password), role||'manager', active===false?0:1);
+    res.json({ ok:true });
+  } catch(e) { res.status(400).json({ error:'Такий логін вже існує' }); }
 });
 app.put('/api/users/:id', auth, (req, res) => {
-  const { name='', login, password='', role='manager', active=1 } = req.body;
-  if (!login) return res.status(400).json({ error: 'Вкажіть логін' });
+  const old = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+  if (!old) return res.status(404).json({ error:'Користувача не знайдено' });
+  const { name, username, password, role, active } = req.body;
   try {
-    db.prepare('UPDATE users SET name=?, login=?, password=?, role=?, active=? WHERE id=?').run(name, login, password, role, active ? 1 : 0, req.params.id);
+    db.prepare('UPDATE users SET name=?,username=?,password=?,role=?,active=? WHERE id=?').run(
+      name || old.name, username || old.username, password ? String(password) : old.password, role || old.role, active===false?0:1, req.params.id
+    );
     res.json({ ok:true });
-  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
+  } catch(e) { res.status(400).json({ error:'Такий логін вже існує' }); }
 });
 app.delete('/api/users/:id', auth, (req, res) => {
   db.prepare('DELETE FROM users WHERE id=?').run(req.params.id);
   res.json({ ok:true });
 });
 
-// SETTINGS: BACKGROUND IMAGE
 app.post('/api/settings/background', auth, upload.single('background'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не завантажено' });
+  if (!req.file) return res.status(400).json({ error:'Файл не отримано' });
   const url = '/uploads/' + req.file.filename;
-  const stmt = db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)');
-  stmt.run('bg_image', url);
-  stmt.run('bg_enabled', '1');
+  db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)').run('crm_bg_url', url);
+  db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)').run('crm_bg_enabled', '1');
   res.json({ ok:true, url });
 });
-app.delete('/api/settings/background', auth, (req, res) => {
-  const stmt = db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)');
-  stmt.run('bg_image', '');
-  stmt.run('bg_enabled', '0');
-  res.json({ ok:true });
-});
+
 
 // CHANGE PASSWORD
 app.post('/api/change-password', auth, (req, res) => {
