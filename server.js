@@ -81,6 +81,7 @@ const mc = db.prepare('SELECT COUNT(*) as c FROM masters').get();
 if (mc.c === 0) ['Іван','Олег','Марія','Сергій'].forEach(n => db.prepare('INSERT OR IGNORE INTO masters(name)VALUES(?)').run(n));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -299,6 +300,36 @@ app.get('/api/stats', auth, (req, res) => {
   });
 });
 
+
+
+function csvEscape(v){
+  v = v === null || v === undefined ? '' : String(v);
+  return '"' + v.replace(/"/g,'""') + '"';
+}
+function parseCsvLine(line){
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){
+      if(q && line[i+1]==='"'){cur+='"'; i++;}
+      else q=!q;
+    }else if(ch===',' && !q){out.push(cur); cur='';}
+    else cur+=ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parseCsv(text){
+  text = String(text||'').replace(/^\uFEFF/, '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = text.split('\n').filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const headers = parseCsvLine(lines.shift()).map(h=>h.trim());
+  return lines.map(line=>{
+    const vals=parseCsvLine(line);
+    const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]!==undefined?vals[i].trim():'');
+    return obj;
+  });
+}
 // SETTINGS
 db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`);
 db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, login TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'manager', active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
@@ -453,6 +484,56 @@ app.delete('/api/repairs/:repairId/parts/:rowId', auth, (req, res) => {
 });
 
 // WAREHOUSE / PARTS
+
+// PARTS CSV IMPORT / EXPORT
+app.get('/api/parts/export', auth, (req, res) => {
+  const rows = db.prepare('SELECT name,category,compatible,qty,min_qty,buy_price,sell_price,supplier,notes FROM parts ORDER BY category ASC, name ASC').all();
+  const header = ['name','category','compatible','qty','min_qty','buy_price','sell_price','supplier','notes'];
+  const csv = [header.join(',')].concat(rows.map(r=>header.map(h=>csvEscape(r[h])).join(','))).join('\n');
+  res.setHeader('Content-Type','text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition','attachment; filename="am_store_parts_export.csv"');
+  res.send('\uFEFF'+csv);
+});
+
+app.post('/api/parts/import', auth, upload.single('file'), (req, res) => {
+  if(!req.file) return res.status(400).json({error:'Файл не завантажено'});
+  const text = fs.readFileSync(req.file.path, 'utf8');
+  const rows = parseCsv(text);
+  const insert = db.prepare(`INSERT INTO parts(name,category,compatible,qty,min_qty,buy_price,sell_price,supplier,notes) VALUES(?,?,?,?,?,?,?,?,?)`);
+  const update = db.prepare(`UPDATE parts SET category=?, compatible=?, qty=?, min_qty=?, buy_price=?, sell_price=?, supplier=?, notes=? WHERE name=?`);
+  const find = db.prepare('SELECT id, qty FROM parts WHERE name=?');
+  const move = db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)');
+  let created=0, updated=0;
+  const tx = db.transaction((items)=>{
+    for(const r of items){
+      const name = (r.name || r['Назва'] || r['назва'] || '').trim();
+      if(!name) continue;
+      const category = r.category || r['Категорія'] || r['категорія'] || '';
+      const compatible = r.compatible || r['Сумісність'] || r['сумісність'] || '';
+      const qty = Number(r.qty || r['Кількість'] || r['кількість'] || 0);
+      const min_qty = Number(r.min_qty || r['Мін'] || r['Мінімум'] || 1);
+      const buy_price = Number(r.buy_price || r['Закупка'] || r['закупка'] || 0);
+      const sell_price = Number(r.sell_price || r['Продаж'] || r['продаж'] || 0);
+      const supplier = r.supplier || r['Постачальник'] || r['постачальник'] || '';
+      const notes = r.notes || r['Коментар'] || r['коментар'] || '';
+      const old = find.get(name);
+      if(old){
+        update.run(category, compatible, qty, min_qty, buy_price, sell_price, supplier, notes, name);
+        const diff = qty - Number(old.qty||0);
+        if(diff !== 0) move.run(old.id, diff>0?'in':'out', Math.abs(diff), 'Імпорт CSV');
+        updated++;
+      }else{
+        const info = insert.run(name, category, compatible, qty, min_qty, buy_price, sell_price, supplier, notes);
+        if(qty !== 0) move.run(info.lastInsertRowid, qty>0?'in':'out', Math.abs(qty), 'Імпорт CSV');
+        created++;
+      }
+    }
+  });
+  tx(rows);
+  try { fs.unlinkSync(req.file.path); } catch(e) {}
+  res.json({ok:true, created, updated});
+});
+
 app.get('/api/parts', auth, (req, res) => {
   const { search, category, low } = req.query;
   let sql = 'SELECT * FROM parts WHERE 1=1';
