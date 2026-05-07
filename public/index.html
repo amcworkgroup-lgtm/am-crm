@@ -383,6 +383,33 @@ select{background-color:var(--bg2);color:var(--text)}
 .wh-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:600px){.wh-kpi{grid-template-columns:repeat(2,1fr)}.wh-actions .btn{flex:1}}
 
+
+
+/* ══ SETTINGS TABS — safe patch ══ */
+.set-wrap{display:flex;flex-direction:column;gap:16px;max-width:1280px}
+.set-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+.set-title{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:800;letter-spacing:-.4px}
+.set-tabs{display:flex;gap:0;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:0 14px;overflow-x:auto;box-shadow:var(--shadow)}
+.set-tab{height:54px;padding:0 18px;border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.set-tab:hover{color:var(--text)}
+.set-tab.on{color:var(--orange);border-bottom-color:var(--orange)}
+.set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.set-card{background:rgba(22,27,37,.86);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+[data-theme="light"] .set-card{background:var(--bg2)}
+.set-card h3{font-size:16px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.set-table{width:100%;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.set-row{display:grid;grid-template-columns:1.2fr 1fr .9fr .9fr 90px;gap:10px;align-items:center;padding:12px;border-bottom:1px solid var(--border);font-size:13px}
+.set-row:last-child{border-bottom:none}.set-row.head{color:var(--text2);font-size:11px;font-weight:800;text-transform:uppercase;background:var(--bg3)}
+.role-badge,.status-badge{display:inline-flex;align-items:center;width:max-content;padding:4px 9px;border-radius:7px;font-size:11px;font-weight:800}
+.role-admin{background:rgba(249,115,22,.18);color:var(--orange)}.role-manager{background:rgba(59,130,246,.18);color:var(--blue)}.role-master{background:rgba(124,58,237,.18);color:var(--purple)}.role-finance{background:rgba(34,197,94,.18);color:var(--green)}
+.status-active{background:rgba(34,197,94,.18);color:var(--green)}.status-off{background:rgba(239,68,68,.16);color:var(--red)}
+.role-list{display:flex;flex-direction:column;gap:9px;color:var(--text2);font-size:13px;line-height:1.45}.role-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.visual-preview{height:230px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(135deg,#111827,#090b10);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;margin:10px 0 12px}
+.visual-preview:after{content:'';position:absolute;inset:0;background:rgba(0,0,0,var(--previewOverlay,.35))}.visual-preview img{position:relative;z-index:2;max-width:220px;max-height:120px;object-fit:contain;filter:drop-shadow(0 10px 30px rgba(255,106,0,.35))}
+.visual-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.range-row{display:grid;grid-template-columns:150px 1fr 56px;align-items:center;gap:12px;margin:14px 0}.range-row input{width:100%;accent-color:var(--orange)}
+.bg-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.bg-preset{height:88px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background-size:cover;background-position:center;position:relative;overflow:hidden}.bg-preset.on{outline:2px solid var(--orange)}.bg-preset.on:after{content:'✓';position:absolute;right:8px;bottom:8px;background:var(--orange);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.settings-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.settings-form-grid .full{grid-column:1/-1}
+@media(max-width:900px){.set-grid{grid-template-columns:1fr}.set-row{grid-template-columns:1fr;gap:5px}.set-row.head{display:none}.visual-actions{grid-template-columns:1fr}.bg-presets{grid-template-columns:repeat(2,1fr)}.settings-form-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -442,7 +469,8 @@ select{background-color:var(--bg2);color:var(--text)}
 let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='dashboard';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
-let settings={};
+let settings={}, users=[];
+let settingTab='users';
 let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,finTab='overview',finFrom='',finTo='',finMaster='',finPayMethod='',finPayStatus='',statsMaster='',statsFrom='',statsTo='',stockSearch='',stockCat='',stockLow=false;
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null,partEditId=null;
@@ -503,6 +531,7 @@ async function loadAllRepairs(){
 async function loadStats(){stats=await api('GET','/api/stats')||{};}
 async function loadMasters(){masters=await api('GET','/api/masters')||[];}
 async function loadSettings(){settings=await api('GET','/api/settings')||{};applyAccent();}
+async function loadUsers(){users=await api('GET','/api/users')||[];}
 async function loadClients(q=''){clients=await api('GET','/api/clients?search='+encodeURIComponent(q))||[];}
 async function loadExpenses(){expenses=await api('GET','/api/expenses?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||[];}
 async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||{rows:[]};}
@@ -524,6 +553,7 @@ function go(tab){
   else if(tab==='warehouse') loadParts().then(render);
   else if(tab==='stats') loadStats().then(render);
   else if(tab==='dashboard') loadStats().then(render);
+  else if(tab==='settings') Promise.all([loadUsers(),loadSettings(),loadMasters()]).then(render);
   else render();
 }
 
@@ -1846,103 +1876,171 @@ const ACCENT_COLORS = [
 ];
 
 function renderSettings(){
-  const s = settings;
-  const mList=masters.map(m=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg3);border-radius:var(--r);margin-bottom:6px">
-      <div>
-        <span style="font-weight:600">${m.name}</span>
-        <span style="color:var(--text2);font-size:12px;margin-left:8px">ставка: ${m.rate||s.master_rate||40}%</span>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn xs" onclick="editMasterRate(${m.id},'${m.name}',${m.rate||s.master_rate||40})">%</button>
-        <button class="btn xs red" onclick="delMaster(${m.id})">✕</button>
-      </div>
-    </div>`).join('');
-
-  const accentBtns = ACCENT_COLORS.map(c=>`
-    <button onclick="pickAccent('${c.val}')" title="${c.name}"
-      style="width:32px;height:32px;border-radius:50%;background:${c.val};border:3px solid ${(s.accent_color||'#e8580a')===c.val?'var(--text)':'transparent'};cursor:pointer;transition:border .15s"></button>
-  `).join('');
-
-  return`<div style="max-width:560px;display:flex;flex-direction:column;gap:14px">
-
-    <!-- МАГАЗИН -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px">🏪 Інформація про сервісний центр</h4>
-      <div class="fg" style="gap:10px">
-        <div class="frow"><label>Назва</label><input class="inp" id="s-shop_name" value="${s.shop_name||''}" placeholder="AM Store"/></div>
-        <div class="frow"><label>Телефон</label><input class="inp" id="s-shop_phone" value="${s.shop_phone||''}" placeholder="073 477 30 90"/></div>
-        <div class="frow full"><label>Адреса</label><input class="inp" id="s-shop_address" value="${s.shop_address||''}" placeholder="Черкаси, ТРЦ Хрещатик"/></div>
-        <div class="frow"><label>Telegram</label><input class="inp" id="s-shop_telegram" value="${s.shop_telegram||''}" placeholder="@amadze"/></div>
-        <div class="frow"><label>Гарантія (днів)</label><input class="inp" type="number" id="s-warranty_days" value="${s.warranty_days||30}"/></div>
-      </div>
-      <button class="btn orange" style="margin-top:12px" onclick="saveSettings(['shop_name','shop_phone','shop_address','shop_telegram','warranty_days'])">Зберегти</button>
-    </div>
-
-    <!-- МАЙСТРИ -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px">👷 Майстри</h4>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Ставка за замовчуванням: <input class="inp" type="number" id="s-master_rate" value="${s.master_rate||40}" style="width:60px;display:inline;padding:3px 8px;margin:0 4px"/> %
-        <button class="btn xs" onclick="saveSettings(['master_rate'])">Зберегти</button>
-      </div>
-      <div>${mList||'<div style="color:var(--text3);font-size:13px;padding:8px 0">Немає майстрів</div>'}</div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="inp" id="new-master" style="flex:1" placeholder="Ім'я майстра..." onkeydown="if(event.key==='Enter')addMaster()"/>
-        <button class="btn blue" onclick="addMaster()">Додати</button>
-      </div>
-    </div>
-
-    <!-- ШАБЛОНИ -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px">📋 Шаблони повідомлень</h4>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Змінні: <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{client}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{type}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{model}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{id}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{price}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{phone}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{days}</code> <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">{shop_name}</code></div>
-      <div class="fg" style="grid-template-columns:1fr;gap:10px">
-        <div class="frow"><label>✅ Готово до видачі</label><textarea class="area" id="s-msg_ready" style="min-height:60px">${s.msg_ready||''}</textarea></div>
-        <div class="frow"><label>🔧 Прийнято в ремонт</label><textarea class="area" id="s-msg_accept" style="min-height:60px">${s.msg_accept||''}</textarea></div>
-        <div class="frow"><label>💳 Нагадування про оплату</label><textarea class="area" id="s-msg_debt" style="min-height:60px">${s.msg_debt||''}</textarea></div>
-        <div class="frow"><label>⏰ Не забрав 7+ днів</label><textarea class="area" id="s-msg_overdue" style="min-height:60px">${s.msg_overdue||''}</textarea></div>
-      </div>
-      <button class="btn orange" style="margin-top:12px" onclick="saveSettings(['msg_ready','msg_accept','msg_debt','msg_overdue'])">Зберегти шаблони</button>
-    </div>
-
-    <!-- КОЛІР АКЦЕНТУ -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">🎨 Колір акценту</h4>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        ${accentBtns}
-        <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
-          <input type="color" id="s-accent_color" value="${s.accent_color||'#e8580a'}" style="width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;padding:0"/>
-          <span style="font-size:12px;color:var(--text2)">Свій колір</span>
-          <button class="btn xs" onclick="pickAccent(document.getElementById('s-accent_color').value)">OK</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ПАРОЛЬ -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">🔒 Змінити пароль</h4>
-      <div class="fg" style="gap:10px">
-        <div class="frow"><label>Поточний пароль</label><input class="inp" type="password" id="pw-current"/></div>
-        <div class="frow"><label>Новий пароль</label><input class="inp" type="password" id="pw-new"/></div>
-        <div class="frow"><label>Повторити</label><input class="inp" type="password" id="pw-confirm"/></div>
-      </div>
-      <button class="btn orange" style="margin-top:12px" onclick="changePassword()">Змінити пароль</button>
-      <div id="pw-msg" style="font-size:12px;margin-top:8px"></div>
-    </div>
-
-    <!-- БЕКАП І ЕКСПОРТ -->
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-      <h4 style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">💾 Дані</h4>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a href="/api/backup" style="text-decoration:none"><button class="btn blue">⬇ Резервна копія БД</button></a>
-        <a href="/api/export/repairs" style="text-decoration:none"><button class="btn green">⬇ Ремонти (CSV)</button></a>
-      </div>
-      <div style="font-size:11px;color:var(--text2);margin-top:8px">Рекомендуємо робити копію щотижня</div>
-    </div>
-
+  const tabLabels={
+    users:'Користувачі та ролі',
+    visual:'Візуальні налаштування',
+    general:'Загальні налаштування',
+    repair:'Ремонт',
+    finance:'Фінанси',
+    messages:'Повідомлення',
+    backup:'Резервні копії'
+  };
+  const tabs=[
+    ['users','Користувачі та ролі'],['visual','Візуальні налаштування'],['general','Загальні налаштування'],
+    ['repair','Ремонт'],['finance','Фінанси'],['messages','Повідомлення'],['backup','Резервні копії']
+  ];
+  return `<div class="set-wrap">
+    <div class="set-head"><div class="set-title">⚙️ Налаштування</div></div>
+    <div class="set-tabs">${tabs.map(t=>`<button class="set-tab ${settingTab===t[0]?'on':''}" onclick="switchSettingsTab('${t[0]}')">${t[1]}</button>`).join('')}</div>
+    <div id="settings-tab-content">${renderSettingsTabContent()}</div>
   </div>`;
 }
 
+function switchSettingsTab(tab){
+  settingTab=tab;
+  if(tab==='users') loadUsers().then(render); else render();
+}
+
+function renderSettingsTabContent(){
+  if(settingTab==='visual') return renderVisualSettings();
+  if(settingTab==='general') return renderGeneralSettings();
+  if(settingTab==='repair') return renderRepairSettings();
+  if(settingTab==='finance') return renderFinanceSettingsTab();
+  if(settingTab==='messages') return renderMessageSettingsTab();
+  if(settingTab==='backup') return renderBackupSettingsTab();
+  return renderUsersSettings();
+}
+
+function roleLabel(role){return ({admin:'Адмін',manager:'Менеджер',master:'Майстер',finance:'Фінансист'}[role]||role||'Менеджер');}
+function roleClass(role){return ({admin:'role-admin',manager:'role-manager',master:'role-master',finance:'role-finance'}[role]||'role-manager');}
+
+function renderUsersSettings(){
+  const rows=(users||[]).map(u=>`<div class="set-row">
+    <div style="display:flex;align-items:center;gap:10px"><span style="width:32px;height:32px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(u.name||u.login||'?').slice(0,1).toUpperCase()}</span><b>${u.name||u.login}</b></div>
+    <div>${u.login}</div>
+    <div><span class="role-badge ${roleClass(u.role)}">${roleLabel(u.role)}</span></div>
+    <div><span class="status-badge ${u.active?'status-active':'status-off'}">${u.active?'Активний':'Вимкнений'}</span></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn xs" onclick="openUserModal(${u.id})">✎</button><button class="btn xs red" onclick="deleteUser(${u.id})">🗑</button></div>
+  </div>`).join('');
+  return `<div class="set-grid">
+    <div class="set-card">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px"><h3 style="margin:0">👥 Користувачі та ролі</h3><button class="btn orange" onclick="openUserModal()">+ Додати користувача</button></div>
+      <div class="set-table"><div class="set-row head"><div>Ім’я</div><div>Логін</div><div>Роль</div><div>Статус</div><div>Дії</div></div>${rows||'<div style="padding:26px;color:var(--text3);text-align:center">Користувачів ще немає</div>'}</div>
+    </div>
+    <div class="set-card">
+      <h3>🔐 Ролі в системі</h3>
+      <div class="role-list">
+        <div><span class="role-dot" style="background:var(--orange)"></span><b>Адмін</b> — повний доступ до всіх розділів</div>
+        <div><span class="role-dot" style="background:var(--blue)"></span><b>Менеджер</b> — ремонти, клієнти, акти, повідомлення</div>
+        <div><span class="role-dot" style="background:var(--purple)"></span><b>Майстер</b> — ремонти, статуси, коментарі, фото</div>
+        <div><span class="role-dot" style="background:var(--green)"></span><b>Фінансист</b> — фінанси, каса, платежі, витрати</div>
+      </div>
+      <div style="margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:12px;color:var(--text2);font-size:12px;line-height:1.5">Прив’язку користувача до майстра не додавав — як домовлялись.</div>
+    </div>
+  </div>`;
+}
+
+function renderVisualSettings(){
+  setTimeout(applyVisualPreview,0);
+  return `<div class="set-grid">
+    <div class="set-card">
+      <h3>🖌️ Візуальні налаштування</h3>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:700">Фонове зображення <input type="checkbox" id="bg-enabled" ${localStorage.getItem('crm_bg_enabled')!=='0'?'checked':''} onchange="saveVisualLocal()" style="width:38px;height:20px;accent-color:var(--orange)"></label>
+      <div class="visual-preview" id="visual-preview"><img src="logo.png" onerror="this.style.display='none'"></div>
+      <div class="visual-actions"><label class="btn orange" style="text-align:center;cursor:pointer">↥ Обрати зображення<input type="file" accept="image/*" style="display:none" onchange="uploadBgImage(event)"></label><button class="btn" onclick="removeBgImage()">Видалити фон</button></div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Рекомендовано 1920×1080, JPG/PNG. Фон зберігається у цьому браузері.</div>
+      <div class="range-row"><label>Прозорість фону</label><input type="range" min="0" max="90" id="bg-opacity" value="${localStorage.getItem('crm_bg_opacity')||20}" oninput="saveVisualLocal()"><b id="bg-opacity-v">${localStorage.getItem('crm_bg_opacity')||20}%</b></div>
+      <div class="range-row"><label>Темний overlay</label><input type="range" min="0" max="90" id="bg-overlay" value="${localStorage.getItem('crm_bg_overlay')||40}" oninput="saveVisualLocal()"><b id="bg-overlay-v">${localStorage.getItem('crm_bg_overlay')||40}%</b></div>
+    </div>
+    <div class="set-card">
+      <h3>🖼️ Попередній перегляд</h3>
+      <div class="bg-presets">
+        <div class="bg-preset" onclick="chooseBgPreset('hex')" id="preset-hex" style="background:radial-gradient(circle at 40% 30%,rgba(249,115,22,.35),transparent 26%),linear-gradient(135deg,#07090d,#151a24)"></div>
+        <div class="bg-preset" onclick="chooseBgPreset('metal')" id="preset-metal" style="background:linear-gradient(135deg,#222,#0b0b0b)"></div>
+        <div class="bg-preset" onclick="chooseBgPreset('carbon')" id="preset-carbon" style="background:repeating-linear-gradient(45deg,#101010 0 10px,#181818 10px 20px)"></div>
+        <div class="bg-preset" onclick="chooseBgPreset('wood')" id="preset-wood" style="background:linear-gradient(90deg,#2a1a10,#5a351d,#21140c)"></div>
+      </div>
+      <button class="btn orange" style="margin-top:16px" onclick="applyVisualSettings();showToast('✓ Візуальні налаштування застосовано')">Застосувати</button>
+    </div>
+  </div>`;
+}
+
+function renderGeneralSettings(){
+  const s=settings;
+  return `<div class="set-card" style="max-width:720px"><h3>🏪 Загальні налаштування</h3>
+    <div class="settings-form-grid">
+      <div class="frow"><label>Назва</label><input class="inp" id="s-shop_name" value="${s.shop_name||''}" placeholder="AM Store"></div>
+      <div class="frow"><label>Телефон</label><input class="inp" id="s-shop_phone" value="${s.shop_phone||''}" placeholder="073 477 30 90"></div>
+      <div class="frow full"><label>Адреса</label><input class="inp" id="s-shop_address" value="${s.shop_address||''}" placeholder="Черкаси, ТРЦ Хрещатик"></div>
+      <div class="frow"><label>Telegram</label><input class="inp" id="s-shop_telegram" value="${s.shop_telegram||''}" placeholder="@amadze"></div>
+      <div class="frow"><label>Гарантія, днів</label><input class="inp" type="number" id="s-warranty_days" value="${s.warranty_days||30}"></div>
+    </div><button class="btn orange" style="margin-top:14px" onclick="saveSettings(['shop_name','shop_phone','shop_address','shop_telegram','warranty_days'])">Зберегти</button></div>`;
+}
+
+function renderRepairSettings(){
+  const s=settings;
+  const mList=masters.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg3);border-radius:var(--r);margin-bottom:6px"><div><b>${m.name}</b><span style="color:var(--text2);font-size:12px;margin-left:8px">ставка: ${m.rate||s.master_rate||40}%</span></div><div style="display:flex;gap:6px"><button class="btn xs" onclick="editMasterRate(${m.id},'${m.name}',${m.rate||s.master_rate||40})">%</button><button class="btn xs red" onclick="delMaster(${m.id})">✕</button></div></div>`).join('');
+  return `<div class="set-card" style="max-width:720px"><h3>🔧 Ремонт</h3><div style="font-size:12px;color:var(--text2);margin-bottom:12px">Ставка за замовчуванням: <input class="inp" type="number" id="s-master_rate" value="${s.master_rate||40}" style="width:70px;display:inline;padding:5px 8px;margin:0 4px"> % <button class="btn xs" onclick="saveSettings(['master_rate'])">Зберегти</button></div>${mList||'<div style="color:var(--text3);padding:8px 0">Немає майстрів</div>'}<div style="display:flex;gap:8px;margin-top:12px"><input class="inp" id="new-master" style="flex:1" placeholder="Ім’я майстра" onkeydown="if(event.key==='Enter')addMaster()"><button class="btn blue" onclick="addMaster()">Додати</button></div></div>`;
+}
+
+function renderFinanceSettingsTab(){return `<div class="set-card" style="max-width:720px"><h3>💰 Фінанси</h3><div class="role-list"><div>Методи оплати: <b>Готівка</b>, <b>Картка</b>, <b>Переказ</b></div><div>Категорії витрат будуть додані наступним точковим етапом.</div></div></div>`;}
+
+function renderMessageSettingsTab(){
+  const s=settings;
+  return `<div class="set-card" style="max-width:850px"><h3>📨 Повідомлення</h3><div style="font-size:11px;color:var(--text2);margin-bottom:12px">Змінні: {client}, {type}, {model}, {id}, {price}, {phone}, {days}, {shop_name}</div><div class="settings-form-grid" style="grid-template-columns:1fr"><div class="frow"><label>Готово до видачі</label><textarea class="area" id="s-msg_ready">${s.msg_ready||''}</textarea></div><div class="frow"><label>Прийнято в ремонт</label><textarea class="area" id="s-msg_accept">${s.msg_accept||''}</textarea></div><div class="frow"><label>Нагадування про оплату</label><textarea class="area" id="s-msg_debt">${s.msg_debt||''}</textarea></div><div class="frow"><label>Не забрав 7+ днів</label><textarea class="area" id="s-msg_overdue">${s.msg_overdue||''}</textarea></div></div><button class="btn orange" style="margin-top:14px" onclick="saveSettings(['msg_ready','msg_accept','msg_debt','msg_overdue'])">Зберегти шаблони</button></div>`;
+}
+
+function renderBackupSettingsTab(){return `<div class="set-card" style="max-width:720px"><h3>💾 Резервні копії</h3><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="/api/backup" style="text-decoration:none"><button class="btn blue">⬇ Резервна копія БД</button></a><a href="/api/export/repairs" style="text-decoration:none"><button class="btn green">⬇ Ремонти CSV</button></a></div><div style="font-size:12px;color:var(--text2);margin-top:10px">Рекомендовано робити копію щотижня.</div></div>`;}
+
+async function openUserModal(id=null){
+  const u=id?(users||[]).find(x=>x.id===id):null;
+  const html=`<div class="modal-ov" id="user-modal"><div class="modal sm"><h3>${u?'Редагувати користувача':'Додати користувача'}</h3><div class="fg" style="grid-template-columns:1fr;gap:10px"><div class="frow"><label>Ім’я</label><input class="inp" id="u-name" value="${u?.name||''}"></div><div class="frow"><label>Логін</label><input class="inp" id="u-login" value="${u?.login||''}"></div><div class="frow"><label>Пароль ${u?'(залиште пустим, якщо не міняти)':''}</label><input class="inp" type="password" id="u-password"></div><div class="frow"><label>Роль</label><select class="sel" id="u-role"><option value="admin" ${u?.role==='admin'?'selected':''}>Адмін</option><option value="manager" ${u?.role==='manager'?'selected':''}>Менеджер</option><option value="master" ${u?.role==='master'?'selected':''}>Майстер</option><option value="finance" ${u?.role==='finance'?'selected':''}>Фінансист</option></select></div><div class="frow"><label>Статус</label><select class="sel" id="u-active"><option value="1" ${u?.active!==0?'selected':''}>Активний</option><option value="0" ${u?.active===0?'selected':''}>Вимкнений</option></select></div></div><div class="mfoot"><button class="btn" onclick="document.getElementById('user-modal').remove()">Скасувати</button><button class="btn orange" onclick="saveUser(${id||'null'})">Зберегти</button></div></div></div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+async function saveUser(id=null){
+  const body={name:document.getElementById('u-name').value.trim(),login:document.getElementById('u-login').value.trim(),password:document.getElementById('u-password').value,role:document.getElementById('u-role').value,active:+document.getElementById('u-active').value};
+  if(!body.login){showToast('Вкажіть логін');return;}
+  if(!id && !body.password){showToast('Вкажіть пароль');return;}
+  const r=await api(id?'PUT':'POST',id?'/api/users/'+id:'/api/users',body);
+  if(r&&r.error){showToast(r.error);return;}
+  document.getElementById('user-modal')?.remove();
+  await loadUsers();render();showToast('✓ Користувача збережено');
+}
+
+async function deleteUser(id){if(!confirm('Видалити користувача?'))return;await api('DELETE','/api/users/'+id);await loadUsers();render();}
+
+function uploadBgImage(e){
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  if(file.size>5*1024*1024){showToast('Файл завеликий. Максимум 5MB');return;}
+  const r=new FileReader();
+  r.onload=()=>{localStorage.setItem('crm_bg_image',r.result);localStorage.setItem('crm_bg_enabled','1');applyVisualSettings();render();};
+  r.readAsDataURL(file);
+}
+function removeBgImage(){localStorage.removeItem('crm_bg_image');localStorage.removeItem('crm_bg_preset');applyVisualSettings();render();}
+function chooseBgPreset(p){localStorage.setItem('crm_bg_preset',p);localStorage.removeItem('crm_bg_image');localStorage.setItem('crm_bg_enabled','1');applyVisualSettings();render();}
+function saveVisualLocal(){
+  const en=document.getElementById('bg-enabled'); const op=document.getElementById('bg-opacity'); const ov=document.getElementById('bg-overlay');
+  if(en)localStorage.setItem('crm_bg_enabled',en.checked?'1':'0'); if(op)localStorage.setItem('crm_bg_opacity',op.value); if(ov)localStorage.setItem('crm_bg_overlay',ov.value);
+  applyVisualSettings();applyVisualPreview();
+}
+function bgPresetCss(p){return {hex:'radial-gradient(circle at 40% 30%,rgba(249,115,22,.24),transparent 30%),linear-gradient(135deg,#07090d,#151a24)',metal:'linear-gradient(135deg,#222,#0b0b0b)',carbon:'repeating-linear-gradient(45deg,#101010 0 10px,#181818 10px 20px)',wood:'linear-gradient(90deg,#2a1a10,#5a351d,#21140c)'}[p]||'';}
+function applyVisualSettings(){
+  const enabled=localStorage.getItem('crm_bg_enabled')!=='0'; const img=localStorage.getItem('crm_bg_image'); const preset=localStorage.getItem('crm_bg_preset'); const opacity=(localStorage.getItem('crm_bg_opacity')||20)/100; const overlay=(localStorage.getItem('crm_bg_overlay')||40)/100;
+  document.body.style.backgroundImage=''; document.body.style.backgroundSize='cover'; document.body.style.backgroundPosition='center';
+  document.documentElement.style.setProperty('--previewOverlay',overlay);
+  if(enabled&&img){document.body.style.backgroundImage=`linear-gradient(rgba(15,17,23,${overlay}),rgba(15,17,23,${overlay})),url(${img})`;}
+  else if(enabled&&preset){document.body.style.backgroundImage=`linear-gradient(rgba(15,17,23,${overlay}),rgba(15,17,23,${overlay})),${bgPresetCss(preset)}`;}
+  document.body.style.backgroundColor=`rgba(15,17,23,${1-opacity})`;
+}
+function applyVisualPreview(){
+  const prev=document.getElementById('visual-preview'); if(!prev)return;
+  const img=localStorage.getItem('crm_bg_image'); const preset=localStorage.getItem('crm_bg_preset');
+  prev.style.backgroundImage=img?`url(${img})`:(preset?bgPresetCss(preset):'linear-gradient(135deg,#111827,#090b10)');
+  ['hex','metal','carbon','wood'].forEach(p=>document.getElementById('preset-'+p)?.classList.toggle('on',preset===p));
+  const op=document.getElementById('bg-opacity'),ov=document.getElementById('bg-overlay');
+  if(op)document.getElementById('bg-opacity-v').textContent=op.value+'%'; if(ov)document.getElementById('bg-overlay-v').textContent=ov.value+'%';
+}
 async function saveSettings(keys){
   const body={};
   keys.forEach(k=>{
@@ -1985,6 +2083,7 @@ function editMasterRate(id,name,rate){
   });
 }
 
+function toast(text){showToast(text);}
 function showToast(text){
   const el=document.createElement('div');
   el.className='toast';el.textContent=text;
