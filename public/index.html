@@ -503,6 +503,7 @@ let actId='',editId=null,detailId=null,partEditId=null;
 
 const STATUSES=['На діагностиці','В ремонті','Готово','Видано'];
 const PAYS=['Не оплачено','Частково','Оплачено'];
+const PAYMENT_METHODS=['','Готівка','Картка','Переказ','Безготівка'];
 const SB={'На діагностиці':'diag','В ремонті':'work','Готово':'ready','Видано':'issued'};
 const PB={'Не оплачено':'unpaid','Частково':'partial','Оплачено':'paid'};
 
@@ -610,18 +611,33 @@ function statusBadge(r){
   </select>`;
 }
 function payBadge(r){
-  return`<select class="badge ${PB[r.pay_status]||'unpaid'} status-sel" onchange="quickPay('${r.id}',this.value)" onclick="event.stopPropagation()">
-    ${PAYS.map(s=>`<option value="${s}" ${r.pay_status===s?'selected':''}>${s}</option>`).join('')}
-  </select>`;
+  const currentMethod = r.pay_method || '';
+  return`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">
+    <select class="badge ${PB[r.pay_status]||'unpaid'} status-sel" title="Статус оплати" onchange="quickPay('${r.id}',this.value,null)" onclick="event.stopPropagation()">
+      ${PAYS.map(st=>`<option value="${st}" ${r.pay_status===st?'selected':''}>${st}</option>`).join('')}
+    </select>
+    <select class="badge ${currentMethod==='Готівка'?'paid':'diag'} status-sel" title="Спосіб оплати" onchange="quickPayMethod('${r.id}',this.value)" onclick="event.stopPropagation()">
+      ${PAYMENT_METHODS.map(m=>`<option value="${m}" ${currentMethod===m?'selected':''}>${m||'Спосіб'}</option>`).join('')}
+    </select>
+  </div>`;
 }
 async function quickStatus(id,status){
   await api('PATCH','/api/repairs/'+id+'/status',{status});
   const r=repairs.find(x=>x.id===id);if(r)r.status=status;
   await Promise.all([loadStats(),loadAllRepairs()]);render();
 }
-async function quickPay(id,pay){
-  await api('PATCH','/api/repairs/'+id+'/pay',{pay_status:pay});
-  const r=repairs.find(x=>x.id===id);if(r)r.pay_status=pay;
+async function quickPay(id,pay,method){
+  const r=repairs.find(x=>x.id===id) || allRepairs.find(x=>x.id===id) || {};
+  const pay_method = method===null ? (r.pay_method || '') : (method || r.pay_method || '');
+  await api('PATCH','/api/repairs/'+id+'/pay',{pay_status:pay,pay_method});
+  if(r){r.pay_status=pay;r.pay_method=pay_method;}
+  await Promise.all([loadStats(),loadAllRepairs()]);render();
+}
+async function quickPayMethod(id,method){
+  const r=repairs.find(x=>x.id===id) || allRepairs.find(x=>x.id===id) || {};
+  const pay_status = r.pay_status || 'Не оплачено';
+  await api('PATCH','/api/repairs/'+id+'/pay',{pay_status,pay_method:method});
+  if(r){r.pay_method=method;r.pay_status=pay_status;}
   await Promise.all([loadStats(),loadAllRepairs()]);render();
 }
 
@@ -746,6 +762,7 @@ function renderRepairs(){
         <div style="text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end">
           <span class="badge ${SB[r.status]||'issued'}">${r.status}</span>
           <span class="badge ${PB[r.pay_status]||'unpaid'}">${r.pay_status}</span>
+          ${r.pay_method?`<span class="badge ${r.pay_method==='Готівка'?'paid':'diag'}">${r.pay_method}</span>`:''}
           ${r.price?`<span style="font-family:var(--mono);font-size:13px;font-weight:500">${(+r.price).toLocaleString()} ₴</span>`:''}
         </div>
       </div>
@@ -1176,7 +1193,7 @@ function showModal(d){
           <select class="sel" id="f-pay_status">${PAYS.map(s=>`<option ${d.pay_status===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
         <div class="frow"><label>Спосіб оплати</label>
-          <select class="sel" id="f-pay_method">${['','Готівка','Картка','Переказ'].map(x=>`<option ${d.pay_method===x?'selected':''}>${x}</option>`).join('')}</select>
+          <select class="sel" id="f-pay_method">${PAYMENT_METHODS.map(x=>`<option ${d.pay_method===x?'selected':''}>${x}</option>`).join('')}</select>
         </div>
         <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes" style="min-height:44px">${d.internal_notes||''}</textarea></div>
         <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes" style="min-height:44px">${d.notes||''}</textarea></div>
@@ -1331,7 +1348,8 @@ async function openClientDetail(phone,name){
     <td>${r.type} ${r.model}</td>
     <td><span class="badge ${SB[r.status]||'issued'}">${r.status}</span></td>
     <td style="font-family:var(--mono)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</td>
-    <td><span class="badge ${PB[r.pay_status]||'unpaid'}">${r.pay_status}</span></td>
+    <td><span class="badge ${PB[r.pay_status]||'unpaid'}">${r.pay_status}</span>
+          ${r.pay_method?`<span class="badge ${r.pay_method==='Готівка'?'paid':'diag'}">${r.pay_method}</span>`:''}</td>
   </tr>`).join('');
   const html=`<div class="modal-ov" onclick="if(event.target===this)closeModalC()">
     <div class="modal wide">
