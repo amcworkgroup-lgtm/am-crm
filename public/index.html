@@ -847,7 +847,21 @@ async function openDetail(id){
       <div class="cm-text">${c.text}</div>
     </div>`).join(''):`<div style="color:var(--text3);font-size:12px;padding:6px 0">Коментарів немає</div>`;
 
-  const partsOptions=stockParts.map(p=>`<option value="${p.id}">${p.name} · ${p.compatible||'—'} · залишок ${p.qty||0} · закуп ${(Number(p.buy_price||0)).toLocaleString()} ₴</option>`).join('');
+  const repairNeed=((r.type||'')+' '+(r.model||'')).toLowerCase();
+  const partScore=p=>{
+    const txt=((p.name||'')+' '+(p.category||'')+' '+(p.compatible||'')).toLowerCase();
+    let score=0;
+    if(r.type && txt.includes(String(r.type).toLowerCase())) score+=4;
+    String(r.model||'').toLowerCase().split(/\s+/).filter(x=>x.length>1).forEach(w=>{ if(txt.includes(w)) score+=2; });
+    if(Number(p.qty||0)>0) score+=1;
+    return score;
+  };
+  const sortedStock=[...stockParts].sort((a,b)=>partScore(b)-partScore(a) || String(a.name||'').localeCompare(String(b.name||'')));
+  const matchedParts=sortedStock.filter(p=>partScore(p)>=3);
+  const otherParts=sortedStock.filter(p=>partScore(p)<3);
+  const opt=p=>`<option value="${p.id}">${p.name} · ${p.category||'Без папки'} · ${p.compatible||'—'} · залишок ${p.qty||0} · закуп ${(Number(p.buy_price||0)).toLocaleString()} ₴</option>`;
+  const partsOptions=(matchedParts.length?`<optgroup label="Підходить під ${r.type||''} ${r.model||''}">${matchedParts.map(opt).join('')}</optgroup>`:'')+
+    (otherParts.length?`<optgroup label="Інші запчастини зі складу">${otherParts.map(opt).join('')}</optgroup>`:'');
   const usedPartsCost=usedParts.reduce((a,p)=>a+Number(p.total_cost||0),0);
   const usedPartsHtml=usedParts.length?usedParts.map(p=>`
     <div class="rp-row">
