@@ -1071,6 +1071,53 @@ async function deleteRepairPart(repairId,rowId){
   openDetail(repairId);
 }
 
+
+async function openPartToRepairModal(partId){
+  const part = parts.find(x=>Number(x.id)===Number(partId));
+  if(!part){ toast('Запчастину не знайдено'); return; }
+  if(!allRepairs || !allRepairs.length){ await loadAllRepairs(); }
+  const active = (allRepairs||[])
+    .filter(r=>!['Видано','Відмова','Отказ','Відмовився'].includes(r.status||''))
+    .sort((a,b)=>String(b.created_at||b.date_in||'').localeCompare(String(a.created_at||a.date_in||'')));
+  const list = active.length ? active : (allRepairs||[]);
+  const options = list.map(r=>`<option value="${r.id}">${r.id} · ${r.client||'Без клієнта'} · ${r.type||''} ${r.model||''} · ${r.status||''}</option>`).join('');
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-ov" id="part-to-repair-modal" onclick="if(event.target===this)this.remove()">
+    <div class="modal sm">
+      <h3>↪ Додати запчастину до ремонту</h3>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px">
+        <div style="font-weight:800">${part.name}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">${part.category||'Без папки'} · ${part.compatible||'Без моделі'} · залишок: <b>${part.qty||0}</b></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">Закуп: <b>${Number(part.buy_price||0).toLocaleString()} ₴</b> · Продаж: <b>${Number(part.sell_price||0).toLocaleString()} ₴</b></div>
+      </div>
+      <div class="frow" style="margin-bottom:10px">
+        <label>Ремонт / замовлення</label>
+        <select class="sel" id="ptr-repair" style="width:100%"><option value="">Оберіть ремонт</option>${options}</select>
+      </div>
+      <div class="fg" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="frow"><label>К-сть</label><input class="inp" id="ptr-qty" type="number" min="1" max="${part.qty||1}" value="1"></div>
+        <div class="frow"><label>Продаж / шт</label><input class="inp" id="ptr-sell" type="number" min="0" value="${Number(part.sell_price||0)}"></div>
+      </div>
+      <div class="mfoot">
+        <button class="btn" onclick="document.getElementById('part-to-repair-modal')?.remove()">Скасувати</button>
+        <button class="btn orange" onclick="addWarehousePartToRepair(${part.id})">Додати до ремонту</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+async function addWarehousePartToRepair(partId){
+  const repairId=document.getElementById('ptr-repair')?.value;
+  const qty=parseFloat(document.getElementById('ptr-qty')?.value)||1;
+  const unit_price=parseFloat(document.getElementById('ptr-sell')?.value)||0;
+  if(!repairId){ toast('Оберіть ремонт'); return; }
+  const res=await api('POST','/api/repairs/'+repairId+'/parts',{part_id:partId,qty,unit_price});
+  if(res && res.error){ alert(res.error); return; }
+  document.getElementById('part-to-repair-modal')?.remove();
+  await Promise.all([loadParts(),loadRepairs(),loadAllRepairs(),loadStats()]);
+  toast('Запчастину додано до ремонту і списано зі складу');
+  render();
+}
+
 // ── DRAGGABLE MODAL ──
 function makeDraggable(modalEl){
   const handle = modalEl.querySelector('#modal-drag-handle');
@@ -1947,6 +1994,7 @@ function renderWarehouse(){
       <td style="font-family:var(--mono)">${Number(p.sell_price||0).toLocaleString()} ₴</td>
       <td>${p.supplier||'—'}</td>
       <td><div class="wh-actions">
+        <button class="btn xs orange" onclick="openPartToRepairModal(${p.id})">↪ В ремонт</button>
         <button class="btn xs green" onclick="adjustPart(${p.id},1)">+1</button>
         <button class="btn xs amber" onclick="adjustPart(${p.id},-1)">−1</button>
         <button class="btn xs" onclick="openPartModal(${p.id})">Ред.</button>
@@ -1987,7 +2035,7 @@ function renderWarehouse(){
         <th>ID</th><th>Назва</th><th>Папка</th><th>К-сть</th><th>Мін.</th><th>Закупка</th><th>Продаж</th><th>Постачальник</th><th>Дії</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
 
-      <div class="mobile-cards">${visibleParts.map(p=>`<div class="rep-card"><div class="rep-card-top"><div><div class="rep-card-id">#${p.id} · ${whPartRoot(p)} / ${whPartSub(p)}</div><div class="rep-card-name">${p.name}</div><div class="rep-card-device">${p.compatible||''}</div></div><div style="text-align:right"><div class="rep-card-price ${Number(p.qty||0)<=Number(p.min_qty||1)?'wh-low':'wh-ok'}">${p.qty||0} шт</div><div class="tp">${Number(p.buy_price||0).toLocaleString()} ₴</div></div></div><div class="rep-card-actions"><button class="btn sm green" onclick="adjustPart(${p.id},1)">+1</button><button class="btn sm amber" onclick="adjustPart(${p.id},-1)">−1</button><button class="btn sm" onclick="openPartModal(${p.id})">Ред.</button><button class="btn sm red" onclick="deletePart(${p.id})">✕</button></div></div>`).join('')}</div>
+      <div class="mobile-cards">${visibleParts.map(p=>`<div class="rep-card"><div class="rep-card-top"><div><div class="rep-card-id">#${p.id} · ${whPartRoot(p)} / ${whPartSub(p)}</div><div class="rep-card-name">${p.name}</div><div class="rep-card-device">${p.compatible||''}</div></div><div style="text-align:right"><div class="rep-card-price ${Number(p.qty||0)<=Number(p.min_qty||1)?'wh-low':'wh-ok'}">${p.qty||0} шт</div><div class="tp">${Number(p.buy_price||0).toLocaleString()} ₴</div></div></div><div class="rep-card-actions"><button class="btn sm orange" onclick="openPartToRepairModal(${p.id})">↪ В ремонт</button><button class="btn sm green" onclick="adjustPart(${p.id},1)">+1</button><button class="btn sm amber" onclick="adjustPart(${p.id},-1)">−1</button><button class="btn sm" onclick="openPartModal(${p.id})">Ред.</button><button class="btn sm red" onclick="deletePart(${p.id})">✕</button></div></div>`).join('')}</div>
     </section>
   </div>`;
 }
