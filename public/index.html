@@ -431,10 +431,8 @@ select{background-color:var(--bg2);color:var(--text)}
 
 
 .wh-folder.toggle{justify-content:flex-start}
-.wh-caret{font-size:11px;color:var(--text3);transition:transform .15s;width:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.wh-folder.open .wh-caret{transform:rotate(90deg)}
-.wh-folder-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wh-model-dot{color:var(--text3);width:14px;display:inline-flex;justify-content:center}
+.wh-caret{width:16px;display:inline-flex;justify-content:center;align-items:center;font-size:11px;color:var(--text3);flex-shrink:0}
+.wh-spacer{width:16px;display:inline-block;flex-shrink:0}
 .wh-children{display:none}
 .wh-children.open{display:block}
 
@@ -1798,12 +1796,18 @@ function whBuildTree(){
   return tree;
 }
 
+function whEsc(v){ return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function whToggle(key){
   whOpenFolders[key]=!whOpenFolders[key];
   localStorage.setItem('whOpenFolders',JSON.stringify(whOpenFolders));
   render();
 }
-
+function whOpenSelect(path){
+  warehouseFolderPath=path||'';
+  if(path) whOpenFolders[path]=!whOpenFolders[path];
+  localStorage.setItem('whOpenFolders',JSON.stringify(whOpenFolders));
+  render();
+}
 function whSelect(path){
   warehouseFolderPath=path||'';
   render();
@@ -1818,47 +1822,38 @@ function whMatchesFolder(p){
   return true;
 }
 
-function whEsc(s){
-  return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-}
-
-function whToggleSelect(key){
-  warehouseFolderPath = key || '';
-  whOpenFolders[key] = !whOpenFolders[key];
-  localStorage.setItem('whOpenFolders',JSON.stringify(whOpenFolders));
-  render();
-}
-
 function whRenderTree(){
   const tree=whBuildTree();
-  let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')"><span>📦</span><span>Весь склад</span></div>`;
+  let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')"><span class="wh-spacer"></span><span>📦</span><span>Весь склад</span></div>`;
 
   Object.keys(tree).sort().forEach(root=>{
-    const rootOpen=!!whOpenFolders[root] || warehouseFolderPath.startsWith(root);
-    const rootSafe=whEsc(root);
-    html+=`<div class="wh-folder root toggle ${warehouseFolderPath===root?'on':''} ${rootOpen?'open':''}" onclick="whToggleSelect('${rootSafe}')">
-      <span class="wh-caret">▶</span>
-      <span class="wh-folder-name">${root}</span>
+    const rootKey=root;
+    const rootOpen=(rootKey in whOpenFolders) ? !!whOpenFolders[rootKey] : (warehouseFolderPath===rootKey || warehouseFolderPath.startsWith(rootKey+' / '));
+    const rootSafe=whEsc(rootKey);
+    html+=`<div class="wh-folder root toggle ${warehouseFolderPath===rootKey?'on':''} ${rootOpen?'open':''}" onclick="whOpenSelect('${rootSafe}')">
+      <span class="wh-caret">${rootOpen?'▼':'▶'}</span>
+      <span>${root}</span>
     </div>`;
 
     html+=`<div class="wh-children ${rootOpen?'open':''}">`;
 
     Object.keys(tree[root]).sort().forEach(sub=>{
       const subPath=root+' / '+sub;
-      const subOpen=!!whOpenFolders[subPath] || warehouseFolderPath.startsWith(subPath);
+      const subOpen=(subPath in whOpenFolders) ? !!whOpenFolders[subPath] : (warehouseFolderPath===subPath || warehouseFolderPath.startsWith(subPath+' / '));
       const subSafe=whEsc(subPath);
 
-      html+=`<div class="wh-folder wh-sub toggle ${warehouseFolderPath===subPath?'on':''} ${subOpen?'open':''}" onclick="whToggleSelect('${subSafe}')">
-        <span class="wh-caret">▶</span>
+      html+=`<div class="wh-folder wh-sub toggle ${warehouseFolderPath===subPath?'on':''} ${subOpen?'open':''}" onclick="whOpenSelect('${subSafe}')">
+        <span class="wh-caret">${subOpen?'▼':'▶'}</span>
         <span>📁</span>
-        <span class="wh-folder-name">${sub}</span>
+        <span>${sub}</span>
       </div>`;
 
       html+=`<div class="wh-children ${subOpen?'open':''}">`;
 
       Array.from(tree[root][sub]).sort().forEach(model=>{
         const path=root+' / '+sub+' / '+model;
-        html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${whEsc(path)}')"><span class="wh-model-dot">•</span><span>${model}</span></div>`;
+        const pathSafe=whEsc(path);
+        html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${pathSafe}')"><span class="wh-spacer"></span><span>${model}</span></div>`;
       });
 
       html+=`</div>`;
