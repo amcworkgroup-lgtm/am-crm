@@ -610,12 +610,15 @@ app.get('/api/export/repairs', auth, (req, res) => {
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 
-// ADMIN ONLY: clear warehouse parts
-app.delete('/api/parts/reset', auth, (req, res) => {
+// ADMIN: clear all warehouse parts safely
+app.post('/api/parts/reset', auth, (req, res) => {
   try {
+    const before = db.prepare('SELECT COUNT(*) AS c FROM parts').get().c || 0;
+    db.prepare('DELETE FROM stock_movements').run();
     db.prepare('DELETE FROM parts').run();
     try { db.prepare('DELETE FROM sqlite_sequence WHERE name=?').run('parts'); } catch(e) {}
-    res.json({ ok:true });
+    try { db.prepare('DELETE FROM sqlite_sequence WHERE name=?').run('stock_movements'); } catch(e) {}
+    res.json({ ok:true, deleted: before });
   } catch(e) {
     res.status(500).json({ error:e.message });
   }
