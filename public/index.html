@@ -865,6 +865,7 @@ async function openDetail(id){
   const usedPartsCost=usedParts.reduce((a,p)=>a+Number(p.total_cost||0),0);
   const usedPartsSell=usedParts.reduce((a,p)=>a+Number(p.total_price||0),0);
   const usedPartsProfit=usedPartsSell-usedPartsCost;
+  const repairProfit=(Number(r.price||0)-usedPartsCost);
   const usedPartsHtml=usedParts.length?usedParts.map(p=>`
     <div class="rp-row">
       <div>
@@ -939,8 +940,9 @@ async function openDetail(id){
             <div style="font-size:12px;line-height:1.8">
               Майстер: <b>${r.master||'—'}</b><br>
               Прийнято: <b>${r.date_in||'—'}</b>${r.date_plan?` · Планово: <b style="color:${ov?'var(--red)':'var(--amber)'}">${r.date_plan}</b>`:''}<br>
-              Ціна: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}<br>
-              Собівартість запчастин: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Продаж запчастин: <b style="color:var(--blue)">${usedPartsSell.toLocaleString()} ₴</b> · Прибуток запчастин: <b style="color:var(--green)">${usedPartsProfit.toLocaleString()} ₴</b>
+              Ціна клієнту: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}<br>
+              Собівартість запчастин: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Продаж запчастин: <b style="color:var(--blue)">${usedPartsSell.toLocaleString()} ₴</b><br>
+              Прибуток запчастин: <b style="color:var(--green)">${usedPartsProfit.toLocaleString()} ₴</b> · Прибуток ремонту: <b style="color:var(--green)">${repairProfit.toLocaleString()} ₴</b>
             </div>
             ${r.internal_notes?`<div style="margin-top:4px;color:var(--amber);font-size:11px">📋 ${r.internal_notes}</div>`:''}
           </div>
@@ -1036,7 +1038,7 @@ async function addRepairPart(repairId){
   const res=await api('POST','/api/repairs/'+repairId+'/parts',{part_id,qty,unit_price});
   if(res && res.error){alert(res.error);return;}
   await Promise.all([loadRepairs(),loadAllRepairs(),loadStats()]);
-  toast('Запчастину списано зі складу');
+  toast('Запчастину списано, ціна і прибуток оновлені');
   openDetail(repairId);
 }
 
@@ -1045,7 +1047,7 @@ async function deleteRepairPart(repairId,rowId){
   const res=await api('DELETE','/api/repairs/'+repairId+'/parts/'+rowId);
   if(res && res.error){alert(res.error);return;}
   await Promise.all([loadRepairs(),loadAllRepairs(),loadStats()]);
-  toast('Запчастину повернуто на склад');
+  toast('Запчастину повернуто, ціна і прибуток оновлені');
   openDetail(repairId);
 }
 
