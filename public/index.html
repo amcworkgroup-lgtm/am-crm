@@ -430,9 +430,11 @@ select{background-color:var(--bg2);color:var(--text)}
 }
 
 
-.wh-folder.toggle{justify-content:space-between}
-.wh-caret{font-size:11px;color:var(--text3);transition:transform .15s}
+.wh-folder.toggle{justify-content:flex-start}
+.wh-caret{font-size:11px;color:var(--text3);transition:transform .15s;width:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .wh-folder.open .wh-caret{transform:rotate(90deg)}
+.wh-folder-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wh-model-dot{color:var(--text3);width:14px;display:inline-flex;justify-content:center}
 .wh-children{display:none}
 .wh-children.open{display:block}
 
@@ -1816,15 +1818,27 @@ function whMatchesFolder(p){
   return true;
 }
 
+function whEsc(s){
+  return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+function whToggleSelect(key){
+  warehouseFolderPath = key || '';
+  whOpenFolders[key] = !whOpenFolders[key];
+  localStorage.setItem('whOpenFolders',JSON.stringify(whOpenFolders));
+  render();
+}
+
 function whRenderTree(){
   const tree=whBuildTree();
-  let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')">📦 Весь склад</div>`;
+  let html=`<div class="wh-folder ${!warehouseFolderPath?'on':''}" onclick="whSelect('')"><span>📦</span><span>Весь склад</span></div>`;
 
   Object.keys(tree).sort().forEach(root=>{
     const rootOpen=!!whOpenFolders[root] || warehouseFolderPath.startsWith(root);
-    html+=`<div class="wh-folder root toggle ${warehouseFolderPath===root?'on':''} ${rootOpen?'open':''}">
-      <span onclick="whSelect('${root.replace(/'/g,"\\'")}')">${root}</span>
-      <span class="wh-caret" onclick="event.stopPropagation();whToggle('${root.replace(/'/g,"\\'")}')">▶</span>
+    const rootSafe=whEsc(root);
+    html+=`<div class="wh-folder root toggle ${warehouseFolderPath===root?'on':''} ${rootOpen?'open':''}" onclick="whToggleSelect('${rootSafe}')">
+      <span class="wh-caret">▶</span>
+      <span class="wh-folder-name">${root}</span>
     </div>`;
 
     html+=`<div class="wh-children ${rootOpen?'open':''}">`;
@@ -1832,17 +1846,19 @@ function whRenderTree(){
     Object.keys(tree[root]).sort().forEach(sub=>{
       const subPath=root+' / '+sub;
       const subOpen=!!whOpenFolders[subPath] || warehouseFolderPath.startsWith(subPath);
+      const subSafe=whEsc(subPath);
 
-      html+=`<div class="wh-folder wh-sub toggle ${warehouseFolderPath===subPath?'on':''} ${subOpen?'open':''}">
-        <span onclick="whSelect('${subPath.replace(/'/g,"\\'")}')">📁 ${sub}</span>
-        <span class="wh-caret" onclick="event.stopPropagation();whToggle('${subPath.replace(/'/g,"\\'")}')">▶</span>
+      html+=`<div class="wh-folder wh-sub toggle ${warehouseFolderPath===subPath?'on':''} ${subOpen?'open':''}" onclick="whToggleSelect('${subSafe}')">
+        <span class="wh-caret">▶</span>
+        <span>📁</span>
+        <span class="wh-folder-name">${sub}</span>
       </div>`;
 
       html+=`<div class="wh-children ${subOpen?'open':''}">`;
 
       Array.from(tree[root][sub]).sort().forEach(model=>{
         const path=root+' / '+sub+' / '+model;
-        html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${path.replace(/'/g,"\\'")}')">${model}</div>`;
+        html+=`<div class="wh-folder wh-model ${warehouseFolderPath===path?'on':''}" onclick="whSelect('${whEsc(path)}')"><span class="wh-model-dot">•</span><span>${model}</span></div>`;
       });
 
       html+=`</div>`;
