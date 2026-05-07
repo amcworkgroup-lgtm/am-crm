@@ -1767,6 +1767,10 @@ function renderWarehouse(){
     <button class="btn ${stockLow?'orange':''}" onclick="stockLow=!stockLow;loadParts().then(render)">⚠️ Мало</button>
     <button class="btn" onclick="stockSearch='';stockCat='';stockLow=false;loadParts().then(render)">Скинути</button>
     <button class="btn orange" onclick="openPartModal()">+ Запчастина</button>
+    <button class="btn green" onclick="document.getElementById('parts-import-file').click()">📥 Імпорт CSV</button>
+    <button class="btn" onclick="exportPartsCSV()">📤 Експорт CSV</button>
+    <a class="btn" href="/template_apple_parts.csv" download>⬇️ Шаблон Apple</a>
+    <input id="parts-import-file" type="file" accept=".csv,text/csv" style="display:none" onchange="importPartsCSV(this)"/>
   </div>
   <div class="twrap desktop-table"><table><thead><tr>
     <th>ID</th><th>Назва</th><th>Категорія</th><th>К-сть</th><th>Мін.</th><th>Закупка</th><th>Продаж</th><th>Постачальник</th><th>Дії</th>
@@ -1824,6 +1828,23 @@ async function deletePart(id){
   if(!confirm('Видалити запчастину зі складу?')) return;
   await api('DELETE','/api/parts/'+id);
   await loadParts(); render(); toast('Запчастину видалено');
+}
+
+async function importPartsCSV(input){
+  const file=input.files && input.files[0];
+  if(!file) return;
+  if(!confirm('Імпортувати номенклатуру зі CSV? Якщо назва вже є — позиція оновиться.')){ input.value=''; return; }
+  const fd=new FormData();
+  fd.append('file',file);
+  const r=await apiForm('/api/parts/import',fd);
+  input.value='';
+  if(r && r.error){alert(r.error);return;}
+  await loadParts();
+  render();
+  toast(`Імпортовано: додано ${r.created||0}, оновлено ${r.updated||0}`);
+}
+function exportPartsCSV(){
+  window.open('/api/parts/export','_blank');
 }
 
 function renderAct(){
