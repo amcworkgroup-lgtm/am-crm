@@ -365,6 +365,16 @@ select{background-color:var(--bg2);color:var(--text)}
 
 @media(max-width:900px){.stats-kpi-grid{grid-template-columns:repeat(2,1fr)!important}.stats-main-grid{grid-template-columns:1fr!important}}
 
+/* ══ REPAIR PARTS ══ */
+.rp-box{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
+.rp-add{display:grid;grid-template-columns:1fr 90px 120px;gap:8px;align-items:end;margin-bottom:12px}
+.rp-row{display:grid;grid-template-columns:1fr 64px 90px 90px 46px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rp-row:last-child{border-bottom:none}
+.rp-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.rp-num{font-family:var(--mono);font-weight:700;text-align:right}
+@media(max-width:600px){.rp-add{grid-template-columns:1fr}.rp-row{grid-template-columns:1fr 46px}.rp-row .hide-mob{display:none}.rp-num{text-align:left}}
+
 /* ══ WAREHOUSE ══ */
 .wh-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .wh-grid{display:grid;grid-template-columns:1fr;gap:14px}
@@ -763,6 +773,8 @@ async function openDetail(id){
   detailId=id;
   const r=repairs.find(x=>x.id===id);
   const comments=await api('GET','/api/repairs/'+id+'/comments')||[];
+  const usedParts=await api('GET','/api/repairs/'+id+'/parts')||[];
+  const stockParts=await api('GET','/api/parts')||[];
   const photos=JSON.parse(r.photos||'[]');
   const today=new Date().toISOString().slice(0,10);
   const ov=r.date_plan&&r.date_plan<today&&!['Готово','Видано'].includes(r.status);
@@ -778,6 +790,20 @@ async function openDetail(id){
       </div>
       <div class="cm-text">${c.text}</div>
     </div>`).join(''):`<div style="color:var(--text3);font-size:12px;padding:6px 0">Коментарів немає</div>`;
+
+  const partsOptions=stockParts.map(p=>`<option value="${p.id}">${p.name} · ${p.compatible||'—'} · залишок ${p.qty||0} · закуп ${(Number(p.buy_price||0)).toLocaleString()} ₴</option>`).join('');
+  const usedPartsCost=usedParts.reduce((a,p)=>a+Number(p.total_cost||0),0);
+  const usedPartsHtml=usedParts.length?usedParts.map(p=>`
+    <div class="rp-row">
+      <div>
+        <div class="rp-name">${p.part_name}</div>
+        <div class="rp-meta">ID запчастини: ${p.part_id}</div>
+      </div>
+      <div class="rp-num">${p.qty} шт</div>
+      <div class="rp-num hide-mob">${Number(p.unit_cost||0).toLocaleString()} ₴</div>
+      <div class="rp-num hide-mob">${Number(p.total_cost||0).toLocaleString()} ₴</div>
+      <button class="btn xs red" onclick="deleteRepairPart('${id}',${p.id})">✕</button>
+    </div>`).join(''):`<div style="color:var(--text3);font-size:12px;padding:12px 0">До ремонту ще не привʼязано запчастин</div>`;
 
   // Шаблони повідомлень з налаштувань
   function fillTpl(tpl, data){
@@ -816,6 +842,7 @@ async function openDetail(id){
         <!-- ВКЛАДКИ -->
         <div style="display:flex;gap:0" id="rep-tabs">
           <button class="rep-tab on" onclick="switchRepTab('info')">📋 Інфо</button>
+          <button class="rep-tab" onclick="switchRepTab('parts')">📦 Запчастини</button>
           <button class="rep-tab" onclick="switchRepTab('msgs')">💬 Повідомлення</button>
         </div>
       </div>
@@ -839,7 +866,8 @@ async function openDetail(id){
             <div style="font-size:12px;line-height:1.8">
               Майстер: <b>${r.master||'—'}</b><br>
               Прийнято: <b>${r.date_in||'—'}</b>${r.date_plan?` · Планово: <b style="color:${ov?'var(--red)':'var(--amber)'}">${r.date_plan}</b>`:''}<br>
-              Ціна: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}
+              Ціна: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}<br>
+              Собівартість запчастин: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Прибуток: <b style="color:var(--green)">${((Number(r.price||0)-usedPartsCost)).toLocaleString()} ₴</b>
             </div>
             ${r.internal_notes?`<div style="margin-top:4px;color:var(--amber);font-size:11px">📋 ${r.internal_notes}</div>`:''}
           </div>
@@ -847,6 +875,34 @@ async function openDetail(id){
             <div class="det-label">Фото пристрою</div>
             <div class="photo-row" id="photos-wrap">${phHtml}</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА: ЗАПЧАСТИНИ -->
+      <div id="reptab-parts" style="padding:14px 18px;display:none">
+        <div class="rp-box">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:800;font-size:14px">Запчастини в ремонті</div>
+              <div style="font-size:12px;color:var(--text2)">Після додавання запчастина автоматично списується зі складу, а собівартість ремонту оновлюється.</div>
+            </div>
+            <div style="font-family:var(--mono);font-weight:800;color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</div>
+          </div>
+          <div class="rp-add">
+            <div>
+              <label style="font-size:11px;color:var(--text2);font-weight:700">Запчастина зі складу</label>
+              <select class="sel" id="repair-part-select" style="width:100%;margin-top:5px"><option value="">Оберіть запчастину</option>${partsOptions}</select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text2);font-weight:700">К-сть</label>
+              <input class="inp" id="repair-part-qty" type="number" min="1" value="1" style="width:100%;margin-top:5px"/>
+            </div>
+            <button class="btn orange" onclick="addRepairPart('${id}')">+ Додати</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 64px 90px 90px 46px;gap:8px;color:var(--text2);font-size:10px;font-weight:800;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:7px">
+            <div>Назва</div><div>К-сть</div><div class="hide-mob">Закуп</div><div class="hide-mob">Разом</div><div></div>
+          </div>
+          ${usedPartsHtml}
         </div>
       </div>
 
@@ -887,6 +943,27 @@ async function openDetail(id){
   if(mEl) makeDraggable(mEl);
 }
 
+
+async function addRepairPart(repairId){
+  const part_id=document.getElementById('repair-part-select')?.value;
+  const qty=parseFloat(document.getElementById('repair-part-qty')?.value)||1;
+  if(!part_id){toast('Оберіть запчастину');return;}
+  const res=await api('POST','/api/repairs/'+repairId+'/parts',{part_id,qty});
+  if(res && res.error){alert(res.error);return;}
+  await Promise.all([loadRepairs(),loadAllRepairs(),loadStats()]);
+  toast('Запчастину списано зі складу');
+  openDetail(repairId);
+}
+
+async function deleteRepairPart(repairId,rowId){
+  if(!confirm('Видалити запчастину з ремонту і повернути на склад?')) return;
+  const res=await api('DELETE','/api/repairs/'+repairId+'/parts/'+rowId);
+  if(res && res.error){alert(res.error);return;}
+  await Promise.all([loadRepairs(),loadAllRepairs(),loadStats()]);
+  toast('Запчастину повернуто на склад');
+  openDetail(repairId);
+}
+
 // ── DRAGGABLE MODAL ──
 function makeDraggable(modalEl){
   const handle = modalEl.querySelector('#modal-drag-handle');
@@ -924,12 +1001,12 @@ function makeDraggable(modalEl){
 }
 
 function switchRepTab(tab){
-  ['info','msgs'].forEach(t=>{
+  ['info','parts','msgs'].forEach(t=>{
     const el=document.getElementById('reptab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
   });
   document.querySelectorAll('.rep-tab').forEach((b,i)=>{
-    b.classList.toggle('on',['info','msgs'][i]===tab);
+    b.classList.toggle('on',['info','parts','msgs'][i]===tab);
   });
 }
 // ── TELEGRAM + PHONE ──
