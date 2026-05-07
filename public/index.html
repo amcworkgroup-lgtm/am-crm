@@ -411,6 +411,30 @@ select{background-color:var(--bg2);color:var(--text)}
 .settings-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.settings-form-grid .full{grid-column:1/-1}
 @media(max-width:900px){.set-grid{grid-template-columns:1fr}.set-row{grid-template-columns:1fr;gap:5px}.set-row.head{display:none}.visual-actions{grid-template-columns:1fr}.bg-presets{grid-template-columns:repeat(2,1fr)}.settings-form-grid{grid-template-columns:1fr}}
 </style>
+
+<style>
+/* AM_Store Warehouse 1C-like folders */
+.wh-layout{display:grid;grid-template-columns:290px 1fr;gap:16px;align-items:start}
+.wh-sidebar{background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;padding:14px;max-height:calc(100vh - 150px);overflow:auto;box-shadow:var(--shadow)}
+.wh-main{min-width:0}
+.wh-side-title{font-size:12px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:2px 0 12px}
+.wh-tree-node{margin:4px 0}
+.wh-tree-node summary{cursor:pointer;list-style:none;padding:8px 10px;border-radius:10px;color:var(--text);font-weight:800;user-select:none}
+.wh-tree-node summary::-webkit-details-marker{display:none}
+.wh-tree-node summary:hover,.wh-folder:hover{background:var(--bg3)}
+.wh-tree-node summary:before{content:'▶';display:inline-block;font-size:10px;margin-right:6px;color:var(--text3);transition:.15s}
+.wh-tree-node[open] > summary:before{transform:rotate(90deg)}
+.wh-tree-node.sub{margin-left:10px}
+.wh-folder{padding:7px 10px;border-radius:10px;cursor:pointer;font-size:13px;color:var(--text2);font-weight:700;margin:2px 0}
+.wh-folder.on,.wh-tree-node summary.on{background:var(--orange-dim)!important;color:var(--orange)!important;box-shadow:inset 3px 0 0 var(--orange)}
+.wh-model{margin-left:22px;font-weight:600;font-size:12px}
+.wh-path{font-size:12px;color:var(--text2);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}
+@media(max-width:900px){
+  .wh-layout{grid-template-columns:1fr}
+  .wh-sidebar{max-height:280px}
+}
+</style>
+
 </head>
 <body>
 
@@ -2173,5 +2197,182 @@ window.onload=()=>{
   }
 };
 </script>
+
+<script>
+/* AM_Store Warehouse Folder View Addon v1
+   Adds 1C-like folder navigation for warehouse without changing other CRM modules.
+*/
+(function(){
+  const WAREHOUSE_TREE = {
+    "📱 iPhone": {
+      "Дисплеї": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 mini","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 mini","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Plus","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Plus","iPhone 15 Pro","iPhone 15 Pro Max","iPhone 16","iPhone 16 Plus","iPhone 16 Pro","iPhone 16 Pro Max"],
+      "Акумулятори": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 mini","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 mini","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Plus","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Plus","iPhone 15 Pro","iPhone 15 Pro Max","iPhone 16","iPhone 16 Plus","iPhone 16 Pro","iPhone 16 Pro Max"],
+      "Шлейфи зарядки": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 mini","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 mini","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Plus","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Plus","iPhone 15 Pro","iPhone 15 Pro Max","iPhone 16","iPhone 16 Plus","iPhone 16 Pro","iPhone 16 Pro Max"],
+      "Камери": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 mini","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 mini","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Plus","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Plus","iPhone 15 Pro","iPhone 15 Pro Max","iPhone 16","iPhone 16 Plus","iPhone 16 Pro","iPhone 16 Pro Max"],
+      "Заднє скло": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 mini","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 mini","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Plus","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Plus","iPhone 15 Pro","iPhone 15 Pro Max","iPhone 16","iPhone 16 Plus","iPhone 16 Pro","iPhone 16 Pro Max"],
+      "Корпуси": ["iPhone X","iPhone XS","iPhone XS Max","iPhone XR","iPhone 11","iPhone 11 Pro","iPhone 11 Pro Max","iPhone 12","iPhone 12 Pro","iPhone 12 Pro Max","iPhone 13","iPhone 13 Pro","iPhone 13 Pro Max","iPhone 14","iPhone 14 Pro","iPhone 14 Pro Max","iPhone 15","iPhone 15 Pro","iPhone 15 Pro Max"],
+      "Динаміки / мікрофони": ["Верхній динамік","Нижній динамік","Мікрофон","Вібромотор"],
+      "Дрібні шлейфи": ["Кнопки","Face ID шлейф","Датчики","Антени"]
+    },
+    "📲 iPad": {
+      "Дисплеї / тачскріни": ["iPad 9","iPad 10","iPad Air 4","iPad Air 5","iPad Pro 11","iPad Pro 12.9"],
+      "Акумулятори": ["iPad 9","iPad 10","iPad Air 5","iPad Pro 11"],
+      "Шлейфи зарядки": ["iPad 9","iPad 10","iPad Air","iPad Pro"]
+    },
+    "💻 MacBook": {
+      "Акумулятори": ["MacBook Air M1 13","MacBook Air M2 13","MacBook Pro 13 M1","MacBook Pro 14","MacBook Pro 16"],
+      "Дисплеї": ["MacBook Air M1","MacBook Air M2","MacBook Pro 14","MacBook Pro 16"],
+      "Клавіатури": ["MacBook Air 13","MacBook Pro 13","MacBook Pro 14","MacBook Pro 16"],
+      "Трекпади": ["MacBook Air 13","MacBook Pro 14"],
+      "Кулери": ["MacBook Pro 14","MacBook Pro 16"],
+      "Порти зарядки": ["USB-C","MagSafe"]
+    },
+    "⌚ Apple Watch": {
+      "Дисплеї": ["S5 44mm","S6 44mm","S7 45mm","Ultra"],
+      "Акумулятори": ["S5","S6","S7","Ultra"]
+    },
+    "🎧 AirPods": {
+      "Кейси": ["AirPods 2","AirPods 3","AirPods Pro","AirPods Pro 2"],
+      "Витратники": ["Сітки AirPods Pro","Амбушури AirPods Pro"]
+    },
+    "🧰 Витратні матеріали": {
+      "Клей / скотч": ["B7000","T7000","Скотч для дисплеїв"],
+      "Хімія": ["Ізопропіловий спирт","Серветки безворсові"],
+      "Термоматеріали": ["Термопаста","Термопрокладки"],
+      "Гвинти / дрібниці": ["Гвинти iPhone","Гвинти MacBook","Магнітний килимок"]
+    }
+  };
+
+  let whSelectedPath = localStorage.getItem('wh_selected_path') || '';
+  let whSearch = '';
+  function norm(s){ return String(s||'').toLowerCase(); }
+
+  function getPartCategory(p){
+    return p.category || p.group || p.type || '';
+  }
+  function getPartSubcategory(p){
+    return p.subcategory || p.sub_category || p.folder || '';
+  }
+  function partMatchesPath(p, path){
+    if(!path) return true;
+    const [root, sub, model] = path.split(' / ');
+    const hay = norm([p.name,p.title,p.category,p.subcategory,p.compatibility,p.model,p.comment].join(' '));
+    const rootClean = norm(root.replace(/[^\p{L}\p{N}\s]/gu,'').trim());
+    if(rootClean && !hay.includes(rootClean.replace('iphone','iphone'))) {
+      if(root.includes('iPhone') && !hay.includes('iphone')) return false;
+      if(root.includes('iPad') && !hay.includes('ipad')) return false;
+      if(root.includes('MacBook') && !hay.includes('macbook')) return false;
+      if(root.includes('Apple Watch') && !hay.includes('watch')) return false;
+      if(root.includes('AirPods') && !hay.includes('airpods')) return false;
+      if(root.includes('Витратні') && !(hay.includes('клей')||hay.includes('скотч')||hay.includes('спирт')||hay.includes('термо')||hay.includes('сервет')||hay.includes('гвинт'))) return false;
+    }
+    if(sub && !hay.includes(norm(sub))) return false;
+    if(model && !hay.includes(norm(model))) return false;
+    return true;
+  }
+
+  function renderTree(){
+    let html = `<div class="wh-folder ${!whSelectedPath?'on':''}" onclick="whSelectFolder('')">📦 Весь склад</div>`;
+    Object.entries(WAREHOUSE_TREE).forEach(([root, subs])=>{
+      html += `<details class="wh-tree-node" open><summary>${root}</summary>`;
+      Object.entries(subs).forEach(([sub, models])=>{
+        const subPath = `${root} / ${sub}`;
+        html += `<details class="wh-tree-node sub"><summary class="${whSelectedPath===subPath?'on':''}" onclick="event.preventDefault();whSelectFolder('${subPath.replace(/'/g,"\\'")}')">📁 ${sub}</summary>`;
+        models.forEach(model=>{
+          const path = `${root} / ${sub} / ${model}`;
+          html += `<div class="wh-folder wh-model ${whSelectedPath===path?'on':''}" onclick="whSelectFolder('${path.replace(/'/g,"\\'")}')">${model}</div>`;
+        });
+        html += `</details>`;
+      });
+      html += `</details>`;
+    });
+    return html;
+  }
+
+  function getPartsArray(){
+    return window.parts || window.warehouse || window.stock || window.items || [];
+  }
+
+  window.whSelectFolder = function(path){
+    whSelectedPath = path || '';
+    localStorage.setItem('wh_selected_path', whSelectedPath);
+    if(typeof renderWarehouse === 'function'){
+      try{ renderWarehouse(); return; }catch(e){}
+    }
+    if(typeof render === 'function') render();
+  };
+
+  window.whSetSearch = function(v){
+    whSearch = v || '';
+    const table = document.querySelector('.wh-products');
+    if(table) table.innerHTML = whRenderProducts();
+  };
+
+  window.whRenderProducts = function(){
+    const parts = getPartsArray();
+    const filtered = parts.filter(p=>{
+      const text = norm([p.name,p.title,p.category,p.subcategory,p.compatibility,p.model,p.supplier,p.comment].join(' '));
+      const okSearch = !whSearch || text.includes(norm(whSearch));
+      return okSearch && partMatchesPath(p, whSelectedPath);
+    });
+    if(!filtered.length) return `<div class="empty-state"><span class="empty-icon">📦</span><p>У цій папці поки немає позицій</p></div>`;
+    return `<div class="twrap"><table><thead><tr>
+      <th>Назва</th><th>Категорія</th><th>Сумісність</th><th>К-сть</th><th>Закупка</th><th>Продаж</th><th>Постачальник</th><th>Дії</th>
+    </tr></thead><tbody>${filtered.map(p=>`
+      <tr>
+        <td><b>${p.name||p.title||'—'}</b><div class="tp">${p.comment||''}</div></td>
+        <td>${p.category||'—'}${p.subcategory?`<div class="tp">${p.subcategory}</div>`:''}</td>
+        <td>${p.compatibility||p.model||'—'}</td>
+        <td><span class="badge ${(Number(p.qty||p.quantity||0)<=1)?'unpaid':'paid'}">${p.qty??p.quantity??0}</span></td>
+        <td style="font-family:var(--mono)">${Number(p.cost||p.buy_price||0).toLocaleString()} ₴</td>
+        <td style="font-family:var(--mono)">${Number(p.price||p.sell_price||0).toLocaleString()} ₴</td>
+        <td>${p.supplier||'—'}</td>
+        <td><button class="btn sm" onclick="event.stopPropagation();${typeof openPartEdit==='function'?'openPartEdit':'openEditPart'}('${p.id}')">Ред.</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  };
+
+  window.renderWarehouseFolderView = function(){
+    return `<div class="wh-layout">
+      <aside class="wh-sidebar">
+        <div class="wh-side-title">Папки складу</div>
+        ${renderTree()}
+      </aside>
+      <section class="wh-main">
+        <div class="toolbar">
+          <input class="inp" placeholder="Пошук по складу..." oninput="whSetSearch(this.value)" style="min-width:280px">
+          <button class="btn orange" onclick="${typeof openPartModal==='function'?'openPartModal()':'openPartEdit(null)'}">+ Додати</button>
+          <button class="btn" onclick="document.getElementById('wh-import-file')?.click()">📥 Імпорт CSV</button>
+          <button class="btn" onclick="${typeof exportPartsCsv==='function'?'exportPartsCsv()':'location.href=\\'/api/parts/export\\''}">📤 Експорт CSV</button>
+          <input id="wh-import-file" type="file" accept=".csv" style="display:none" onchange="${typeof importPartsCsv==='function'?'importPartsCsv(this.files[0])':'alert(\\'Імпорт ще не підключений\\')'}">
+        </div>
+        <div class="wh-path">${whSelectedPath || 'Весь склад'}</div>
+        <div class="wh-products">${whRenderProducts()}</div>
+      </section>
+    </div>`;
+  };
+
+  const oldRender = window.renderWarehouse;
+  if(typeof oldRender === 'function'){
+    window.renderWarehouse = function(){
+      return window.renderWarehouseFolderView();
+    };
+  }
+
+  const oldRenderFn = window.render;
+  if(typeof oldRenderFn === 'function'){
+    window.render = function(){
+      const res = oldRenderFn.apply(this, arguments);
+      setTimeout(()=>{
+        const main = document.getElementById('main');
+        if(main && (window.TAB === 'warehouse' || window.TAB === 'stock')){
+          main.innerHTML = window.renderWarehouseFolderView();
+        }
+      }, 0);
+      return res;
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
