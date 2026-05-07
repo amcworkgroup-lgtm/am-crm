@@ -1,0 +1,19 @@
+
+.settings-section{
+  background:#111827;
+  color:#fff;
+  padding:24px;
+  border-radius:20px;
+}
+
+.btn-orange{
+  background:#ff6b00;
+  color:#fff;
+  border:none;
+  padding:12px 18px;
+  border-radius:12px;
+}
+
+.bg-upload{
+  margin-top:20px;
+}
