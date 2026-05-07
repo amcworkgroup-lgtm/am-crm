@@ -222,6 +222,15 @@ app.get('/api/cash', auth, (req, res) => {
 });
 app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,description,repair_id}=req.body; db.prepare('INSERT INTO cash_log(date,type,amount,method,description,repair_id)VALUES(?,?,?,?,?,?)').run(date,type,amount||0,method||'Готівка',description||'',repair_id||null); res.json({ ok:true }); });
 
+app.delete('/api/cash/:id', auth, (req, res) => {
+  const { admin_password } = req.body || {};
+  if (admin_password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Видалення доступне тільки адміну' });
+  const row = db.prepare('SELECT * FROM cash_log WHERE id=?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Запис каси не знайдено' });
+  db.prepare('DELETE FROM cash_log WHERE id=?').run(req.params.id);
+  res.json({ ok:true });
+});
+
 // STATS
 app.get('/api/stats', auth, (req, res) => {
   const repairs = db.prepare('SELECT * FROM repairs ORDER BY created_at DESC').all();
