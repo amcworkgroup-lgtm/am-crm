@@ -278,6 +278,8 @@ app.get('/api/stats', auth, (req, res) => {
 
 // SETTINGS
 db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);`);
+db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, login TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'manager', active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
+try { db.prepare('INSERT OR IGNORE INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run('Адмін','admin',ADMIN_PASSWORD,'admin',1); } catch(e) {}
 const DEFAULT_SETTINGS = {
   shop_name: 'AM Store',
   shop_phone: '073 477 30 90',
@@ -307,61 +309,33 @@ app.put('/api/settings', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// USERS FOR SETTINGS TAB (does not change current login system)
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    username TEXT UNIQUE,
-    password TEXT,
-    role TEXT DEFAULT 'manager',
-    active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-try {
-  const uc = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  if (uc === 0) {
-    db.prepare('INSERT OR IGNORE INTO users(name,username,password,role,active) VALUES(?,?,?,?,1)').run('Адмін','admin','', 'admin');
-  }
-} catch(e) {}
 
+// USERS (settings only; без прив'язки до майстра)
 app.get('/api/users', auth, (req, res) => {
-  const rows = db.prepare('SELECT id,name,username,role,active,created_at FROM users ORDER BY id ASC').all();
+  const rows = db.prepare('SELECT id,name,login,role,active,created_at FROM users ORDER BY id DESC').all();
   res.json(rows);
 });
 app.post('/api/users', auth, (req, res) => {
-  const { name, username, password, role, active } = req.body;
-  if (!name || !username || !password) return res.status(400).json({ error:'Заповніть ім’я, логін і пароль' });
+  const { name, login, password, role, active } = req.body;
+  if(!login || !password) return res.status(400).json({ error: 'Логін і пароль обов’язкові' });
   try {
-    db.prepare('INSERT INTO users(name,username,password,role,active) VALUES(?,?,?,?,?)').run(String(name).trim(), String(username).trim(), String(password), role||'manager', active===false?0:1);
+    db.prepare('INSERT INTO users(name,login,password,role,active) VALUES(?,?,?,?,?)').run(name||login, login, password, role||'manager', active===0?0:1);
     res.json({ ok:true });
-  } catch(e) { res.status(400).json({ error:'Такий логін вже існує' }); }
+  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
 });
 app.put('/api/users/:id', auth, (req, res) => {
+  const { name, login, password, role, active } = req.body;
   const old = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
-  if (!old) return res.status(404).json({ error:'Користувача не знайдено' });
-  const { name, username, password, role, active } = req.body;
+  if(!old) return res.status(404).json({ error:'Користувача не знайдено' });
   try {
-    db.prepare('UPDATE users SET name=?,username=?,password=?,role=?,active=? WHERE id=?').run(
-      name || old.name, username || old.username, password ? String(password) : old.password, role || old.role, active===false?0:1, req.params.id
-    );
+    db.prepare('UPDATE users SET name=?, login=?, password=?, role=?, active=? WHERE id=?').run(name||login, login, password || old.password, role||old.role, active===0?0:1, req.params.id);
     res.json({ ok:true });
-  } catch(e) { res.status(400).json({ error:'Такий логін вже існує' }); }
+  } catch(e) { res.status(400).json({ error: 'Такий логін вже існує' }); }
 });
 app.delete('/api/users/:id', auth, (req, res) => {
   db.prepare('DELETE FROM users WHERE id=?').run(req.params.id);
   res.json({ ok:true });
 });
-
-app.post('/api/settings/background', auth, upload.single('background'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error:'Файл не отримано' });
-  const url = '/uploads/' + req.file.filename;
-  db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)').run('crm_bg_url', url);
-  db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)').run('crm_bg_enabled', '1');
-  res.json({ ok:true, url });
-});
-
 
 // CHANGE PASSWORD
 app.post('/api/change-password', auth, (req, res) => {
