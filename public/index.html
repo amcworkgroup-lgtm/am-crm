@@ -505,6 +505,37 @@ select{background-color:var(--bg2);color:var(--text)}
   }
 }
 
+
+/* ══ MOBILE FULL NAV v15 ══ */
+@media(max-width:900px){
+  .topbar{position:sticky!important;left:auto!important;top:0!important;bottom:auto!important;width:100%!important;height:64px!important;padding:8px 12px!important;flex-direction:row!important;align-items:center!important;border-right:0!important;border-bottom:1.5px solid var(--border)!important;background:rgba(15,17,23,.96)!important;backdrop-filter:blur(14px);}
+  .tlogo{margin:0!important;padding:0!important;border:0!important;gap:8px!important;}
+  .tlogo img{width:54px!important;max-height:46px!important;}
+  .tlogo-main{font-size:14px!important}.tlogo-sub{font-size:8px!important;display:block!important;}
+  .tnav{display:none!important;}
+  .tright{margin-left:auto!important;padding:0!important;border:0!important;display:flex!important;gap:8px!important;width:auto!important;}
+  .tright .overdue-pill{display:none!important;}
+  .theme-toggle{width:42px!important;height:42px!important;border-radius:12px!important;}
+  .tlogout{display:none!important;}
+  .main{margin-left:0!important;width:100%!important;max-width:none!important;padding:14px 12px 126px!important;}
+  .main:before{display:none!important;}
+  .mobile-bottom-nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important;gap:6px!important;background:rgba(15,17,23,.98)!important;border-top:1.5px solid var(--border)!important;padding:8px 8px calc(8px + env(safe-area-inset-bottom))!important;z-index:1000!important;box-shadow:0 -12px 28px rgba(0,0,0,.35)!important;}
+  .mbtn{min-height:48px!important;border:1px solid transparent!important;border-radius:13px!important;background:transparent!important;color:var(--text2)!important;font-family:var(--font)!important;font-size:10px!important;font-weight:800!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;}
+  .mbtn span{font-size:18px!important;line-height:1!important;}
+  .mbtn.on{color:var(--orange)!important;background:linear-gradient(90deg,rgba(249,115,22,.18),rgba(249,115,22,.05))!important;border-color:rgba(249,115,22,.55)!important;box-shadow:inset 3px 0 0 var(--orange)!important;}
+  .toolbar{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;}
+  .toolbar .inp,.toolbar .sel,.toolbar .btn{width:100%!important;min-width:0!important;}
+  .wh-layout{grid-template-columns:1fr!important;}
+  .wh-tree{max-height:320px!important;}
+  .modal-ov{padding:74px 10px 132px!important;align-items:flex-start!important;}
+  .modal{max-width:100%!important;border-radius:18px!important;padding:16px!important;}
+  .fg,.set-grid,.settings-form-grid,.fin-grid,.exp-grid{grid-template-columns:1fr!important;}
+}
+@media(max-width:390px){
+  .mobile-bottom-nav{grid-template-columns:repeat(3,1fr)!important;}
+  .main{padding-bottom:178px!important;}
+}
+
 </style>
 </head>
 <body>
@@ -551,12 +582,15 @@ select{background-color:var(--bg2);color:var(--text)}
   </div>
   <div class="main" id="main"></div>
   <div class="mobile-bottom-nav" id="mobile-nav">
-    <button class="mbtn on" onclick="go('dashboard')"><span>🏠</span>Dashboard</button>
-    <button class="mbtn" onclick="go('repairs')"><span>🛠️</span>Ремонти</button>
-    <button class="mbtn" onclick="openNew()"><span>➕</span>Новий</button>
-    <button class="mbtn" onclick="go('finance')"><span>💰</span>Фінанси</button>
-    <button class="mbtn" onclick="go('stats')"><span>📊</span>Статистика</button>
-    <button class="mbtn" onclick="go('reminders')"><span>⏰</span>Більше</button>
+    <button class="mbtn on" onclick="go('dashboard')"><span>⌂</span>Dashboard</button>
+    <button class="mbtn" onclick="go('repairs')"><span>⌁</span>Ремонти</button>
+    <button class="mbtn" onclick="go('clients')"><span>♟</span>Клієнти</button>
+    <button class="mbtn" onclick="go('reminders')"><span>◴</span>Нагад.</button>
+    <button class="mbtn" onclick="go('finance')"><span>▣</span>Фінанси</button>
+    <button class="mbtn" onclick="go('warehouse')"><span>◈</span>Склад</button>
+    <button class="mbtn" onclick="go('act')"><span>▤</span>Акт</button>
+    <button class="mbtn" onclick="go('stats')"><span>▥</span>Стат.</button>
+    <button class="mbtn" onclick="go('settings')"><span>⚙</span>Налашт.</button>
   </div>
 </div>
 
@@ -643,7 +677,7 @@ async function loadParts(){
 function go(tab){
   TAB=tab;
   document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','warehouse','act','stats','settings'][i]===tab));
-  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','new','finance','stats','reminders'][i]===tab));
+  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','clients','reminders','finance','warehouse','act','stats','settings'][i]===tab));
   if(tab==='clients') loadClients().then(render);
   else if(tab==='finance') Promise.all([loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
   else if(tab==='warehouse') loadParts().then(render);
