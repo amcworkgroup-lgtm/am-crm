@@ -159,7 +159,7 @@ app.post('/api/login', (req, res) => {
   db.prepare('INSERT INTO sessions(token)VALUES(?)').run(token);
   db.prepare("DELETE FROM sessions WHERE created_at < datetime('now','-7 days')").run();
   logActivity('Вхід у CRM', 'auth', 'login');
-  res.json({ token });
+  res.json({ token, role:'admin' });
 });
 app.post('/api/logout', auth, (req, res) => { db.prepare('DELETE FROM sessions WHERE token=?').run(req.headers['x-auth-token']); res.json({ ok:true }); });
 
