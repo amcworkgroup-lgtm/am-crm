@@ -619,7 +619,7 @@ let TAB='dashboard';
 let CURRENT_ROLE=localStorage.getItem('crm_role')||'admin';
 function isAdmin(){return CURRENT_ROLE==='admin';}
 let activityLogs=[];
-let activitySearch='';
+let activitySearch='', activityUser='', activityType='', activityFrom='', activityTo='';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
 let settings={}, users=[];
 let settingTab='users';
@@ -705,7 +705,15 @@ async function loadStats(){stats=await api('GET','/api/stats')||{};}
 async function loadMasters(){masters=await api('GET','/api/masters')||[];}
 async function loadSettings(){settings=await api('GET','/api/settings')||{};applyAccent();}
 async function loadUsers(){users=await api('GET','/api/users')||[];}
-async function loadActivity(){activityLogs=await api('GET','/api/activity?search='+encodeURIComponent(activitySearch||''))||[];}
+async function loadActivity(){
+  const q=new URLSearchParams();
+  if(activitySearch) q.set('search', activitySearch);
+  if(activityUser) q.set('user', activityUser);
+  if(activityType) q.set('type', activityType);
+  if(activityFrom) q.set('date_from', activityFrom);
+  if(activityTo) q.set('date_to', activityTo);
+  activityLogs=await api('GET','/api/activity?'+q.toString())||[];
+}
 async function loadClients(q=''){clients=await api('GET','/api/clients?search='+encodeURIComponent(q))||[];}
 async function loadExpenses(){expenses=await api('GET','/api/expenses?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||[];}
 async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||{rows:[]};}
@@ -732,7 +740,7 @@ function go(tab){
   else if(tab==='warehouse') loadParts().then(render);
   else if(tab==='stats') loadStats().then(render);
   else if(tab==='dashboard') loadStats().then(render);
-  else if(tab==='activity') loadActivity().then(render);
+  else if(tab==='activity') Promise.all([loadUsers(),loadActivity()]).then(render);
   else if(tab==='settings') Promise.all([loadUsers(),loadSettings(),loadMasters()]).then(render);
   else render();
 }
@@ -2315,10 +2323,21 @@ function renderActivityLog(){
     <td><div class="tc">${x.action||'—'}</div><div class="tp">${x.entity_id||''}</div></td>
     <td>${x.old_value?`<div class="tp">Було: ${x.old_value}</div>`:''}${x.new_value?`<div class="tp">Стало: ${x.new_value}</div>`:''}${x.note?`<div>${x.note}</div>`:''}</td>
   </tr>`).join('');
+  const logUsers=[...new Set([...(users||[]).map(u=>u.name||u.login).filter(Boolean), ...(activityLogs||[]).map(x=>x.user).filter(Boolean)])];
+  const userOpts=logUsers.map(u=>`<option value="${u}" ${activityUser===u?'selected':''}>${u}</option>`).join('');
+  const typeOpts=['repair','part','repair_part','cash','auth'].map(t=>`<option value="${t}" ${activityType===t?'selected':''}>${activityTypeLabel(t)}</option>`).join('');
   return `<div class="dash-head"><div class="dash-title"><h1>Журнал змін</h1><p>Хто і що робив у CRM</p></div></div>
   <div class="toolbar">
-    <input class="inp" style="min-width:320px" placeholder="Пошук по журналу..." value="${activitySearch||''}" oninput="activitySearch=this.value;clearTimeout(window.__actTimer);window.__actTimer=setTimeout(()=>loadActivity().then(render),350)">
-    <button class="btn" onclick="activitySearch='';loadActivity().then(render)">Скинути</button>
+    <input class="inp" style="min-width:260px" placeholder="Пошук по журналу..." value="${activitySearch||''}" oninput="activitySearch=this.value;clearTimeout(window.__actTimer);window.__actTimer=setTimeout(()=>loadActivity().then(render),350)">
+    <select class="sel" onchange="activityUser=this.value;loadActivity().then(render)">
+      <option value="">Всі користувачі / майстри</option>${userOpts}
+    </select>
+    <select class="sel" onchange="activityType=this.value;loadActivity().then(render)">
+      <option value="">Всі типи</option>${typeOpts}
+    </select>
+    <input class="inp" type="date" title="Дата від" value="${activityFrom||''}" onchange="activityFrom=this.value;loadActivity().then(render)">
+    <input class="inp" type="date" title="Дата до" value="${activityTo||''}" onchange="activityTo=this.value;loadActivity().then(render)">
+    <button class="btn" onclick="activitySearch='';activityUser='';activityType='';activityFrom='';activityTo='';loadActivity().then(render)">Скинути</button>
   </div>
   <div class="twrap"><table><thead><tr><th>Дата / користувач</th><th>Тип</th><th>Дія</th><th>Деталі</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:30px">Журнал поки порожній</td></tr>'}</tbody></table></div>`;
 }
