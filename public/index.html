@@ -589,7 +589,7 @@ select{background-color:var(--bg2);color:var(--text)}
       <button class="tnav-b"     onclick="go('warehouse')"><span class="nav-ico">◈</span><span>Склад</span></button>
       <button class="tnav-b"     onclick="go('act')"><span class="nav-ico">▤</span><span>Акт</span></button>
       <button class="tnav-b"     onclick="go('stats')"><span class="nav-ico">▥</span><span>Статистика</span></button>
-      <button class="tnav-b"     onclick="go('activity')"><span class="nav-ico">≡</span><span>Журнал</span></button>
+      <button class="tnav-b" data-admin-only="1" onclick="go('activity')"><span class="nav-ico">≡</span><span>Журнал</span></button>
       <button class="tnav-b"     onclick="go('settings')"><span class="nav-ico">⚙</span><span>Налаштування</span></button>
     </nav>
     <div class="tright">
@@ -608,7 +608,7 @@ select{background-color:var(--bg2);color:var(--text)}
     <button class="mbtn" onclick="go('warehouse')"><span>◈</span>Склад</button>
     <button class="mbtn" onclick="go('act')"><span>▤</span>Акт</button>
     <button class="mbtn" onclick="go('stats')"><span>▥</span>Стат.</button>
-    <button class="mbtn" onclick="go('activity')"><span>≡</span>Журнал</button>
+    <button class="mbtn" data-admin-only="1" onclick="go('activity')"><span>≡</span>Журнал</button>
     <button class="mbtn" onclick="go('settings')"><span>⚙</span>Налашт.</button>
   </div>
 </div>
@@ -616,6 +616,8 @@ select{background-color:var(--bg2);color:var(--text)}
 <script>
 let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='dashboard';
+let CURRENT_ROLE=localStorage.getItem('crm_role')||'admin';
+function isAdmin(){return CURRENT_ROLE==='admin';}
 let activityLogs=[];
 let activitySearch='';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
@@ -630,6 +632,26 @@ const PAYS=['Не оплачено','Частково','Оплачено'];
 const PAYMENT_METHODS=['','Готівка','Картка','Переказ','Безготівка'];
 const SB={'На діагностиці':'diag','В ремонті':'work','Готово':'ready','Видано':'issued'};
 const PB={'Не оплачено':'unpaid','Частково':'partial','Оплачено':'paid'};
+function paymentComboOptions(currentStatus='', currentMethod=''){
+  const opts=[{label:'Не оплачено',status:'Не оплачено',method:''}];
+  ['Готівка','Картка','Переказ','Безготівка'].forEach(m=>{
+    opts.push({label:'Частково · '+m,status:'Частково',method:m});
+    opts.push({label:'Оплачено · '+m,status:'Оплачено',method:m});
+  });
+  return opts.map(o=>{
+    const val=o.status+'|'+o.method;
+    const selected=(currentStatus===o.status && (currentStatus==='Не оплачено' || (currentMethod||'')===o.method))?'selected':'';
+    return `<option value="${val}" ${selected}>${o.label}</option>`;
+  }).join('');
+}
+function paymentComboValue(status='',method=''){
+  if(!status || status==='Не оплачено') return 'Не оплачено|';
+  return status+'|'+(method||'Готівка');
+}
+function parsePaymentCombo(v){
+  const [pay_status,pay_method=''] = String(v||'Не оплачено|').split('|');
+  return {pay_status, pay_method: pay_status==='Не оплачено' ? '' : pay_method};
+}
 
 // ── API ──
 async function api(method,url,body){
@@ -650,7 +672,7 @@ async function doLogin(){
   const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
   const d=await r.json();
   if(!r.ok){document.getElementById('lerr').textContent=d.error;return;}
-  TOKEN=d.token;localStorage.setItem('crm_token',TOKEN);
+  TOKEN=d.token;localStorage.setItem('crm_token',TOKEN);CURRENT_ROLE=d.role||'admin';localStorage.setItem('crm_role',CURRENT_ROLE);
   document.getElementById('login-screen').style.display='none';
   const app=document.getElementById('app');app.classList.add('is-ready');app.style.display='';app.style.flexDirection='';
   loadAll();
@@ -696,7 +718,12 @@ async function loadParts(){
 }
 
 // ── NAV ──
+
+function applyAccessControls(){
+  document.querySelectorAll('[data-admin-only="1"]').forEach(el=>{el.style.display=isAdmin()?'':'none';});
+}
 function go(tab){
+  if(tab==='activity' && !isAdmin()){showToast('Журнал доступний тільки адміну');return;}
   TAB=tab;
   document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','warehouse','act','stats','activity','settings'][i]===tab));
   document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','clients','reminders','finance','warehouse','act','stats','activity','settings'][i]===tab));
@@ -711,6 +738,7 @@ function go(tab){
 }
 
 function render(){
+  applyAccessControls();
   const m=document.getElementById('main');
   if(TAB==='dashboard')     {m.innerHTML=renderDashboard();setTimeout(initDashboardCharts,50);}
   else if(TAB==='repairs')  m.innerHTML=renderRepairs();
@@ -720,7 +748,7 @@ function render(){
   else if(TAB==='warehouse') m.innerHTML=renderWarehouse();
   else if(TAB==='act')      m.innerHTML=renderAct();
   else if(TAB==='stats')    {m.innerHTML=renderStatsTab();setTimeout(initStatsCharts,50);}
-  else if(TAB==='activity') m.innerHTML=renderActivityLog();
+  else if(TAB==='activity') m.innerHTML=isAdmin()?renderActivityLog():'<div class="empty-state"><span class="empty-icon">🔒</span><p>Журнал доступний тільки адміну</p></div>'; 
   else                      m.innerHTML=renderSettings();
   updateOverduePill();
 }
@@ -738,15 +766,16 @@ function statusBadge(r){
   </select>`;
 }
 function payBadge(r){
-  const currentMethod = r.pay_method || '';
-  return`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">
-    <select class="badge ${PB[r.pay_status]||'unpaid'} status-sel" title="Статус оплати" onchange="quickPay('${r.id}',this.value,null)" onclick="event.stopPropagation()">
-      ${PAYS.map(st=>`<option value="${st}" ${r.pay_status===st?'selected':''}>${st}</option>`).join('')}
-    </select>
-    <select class="badge ${currentMethod==='Готівка'?'paid':'diag'} status-sel" title="Спосіб оплати" onchange="quickPayMethod('${r.id}',this.value)" onclick="event.stopPropagation()">
-      ${PAYMENT_METHODS.map(m=>`<option value="${m}" ${currentMethod===m?'selected':''}>${m||'Спосіб'}</option>`).join('')}
-    </select>
-  </div>`;
+  return `<select class="badge ${PB[r.pay_status]||'unpaid'} status-sel" title="Оплата" onchange="quickPayCombo('${r.id}',this.value)" onclick="event.stopPropagation()">
+    ${paymentComboOptions(r.pay_status||'Не оплачено', r.pay_method||'')}
+  </select>`;
+}
+async function quickPayCombo(id,value){
+  const parsed=parsePaymentCombo(value);
+  const r=repairs.find(x=>x.id===id) || allRepairs.find(x=>x.id===id) || {};
+  await api('PATCH','/api/repairs/'+id+'/pay',parsed);
+  if(r){r.pay_status=parsed.pay_status;r.pay_method=parsed.pay_method;}
+  await Promise.all([loadStats(),loadAllRepairs()]);render();
 }
 async function quickStatus(id,status){
   await api('PATCH','/api/repairs/'+id+'/status',{status});
@@ -1369,10 +1398,7 @@ function showModal(d){
         <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}"/></div>
         <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}"/></div>
         <div class="frow full"><label>Оплата</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <select class="sel" id="f-pay_status">${PAYS.map(s=>`<option ${d.pay_status===s?'selected':''}>${s}</option>`).join('')}</select>
-            <select class="sel" id="f-pay_method">${PAYMENT_METHODS.map(x=>`<option ${d.pay_method===x?'selected':''}>${x||'Спосіб оплати'}</option>`).join('')}</select>
-          </div>
+          <select class="sel" id="f-payment_combo">${paymentComboOptions(d.pay_status||'Не оплачено', d.pay_method||'')}</select>
         </div>
         <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes" style="min-height:44px">${d.internal_notes||''}</textarea></div>
         <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes" style="min-height:44px">${d.notes||''}</textarea></div>
@@ -1388,7 +1414,7 @@ function showModal(d){
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 async function saveRepair(){
-  const body={date_in:gv('f-date_in'),date_plan:'',date_out:gv('f-date_out'),client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:'',password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:gv('f-status'),master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,pay_status:gv('f-pay_status'),pay_method:gv('f-pay_method'),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
+  const body={date_in:gv('f-date_in'),date_plan:'',date_out:gv('f-date_out'),client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:'',password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:gv('f-status'),master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,...parsePaymentCombo(gv('f-payment_combo')),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
   if(editId)await api('PUT','/api/repairs/'+editId,body);
   else await api('POST','/api/repairs',body);
   closeModal();await loadAll();render();
