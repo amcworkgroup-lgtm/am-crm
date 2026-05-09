@@ -551,6 +551,8 @@ select{background-color:var(--bg2);color:var(--text)}
   .main{padding-bottom:92px!important;}
 }
 
+
+@media(max-width:600px){.frow.full div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 </style>
 </head>
 <body>
@@ -587,6 +589,7 @@ select{background-color:var(--bg2);color:var(--text)}
       <button class="tnav-b"     onclick="go('warehouse')"><span class="nav-ico">◈</span><span>Склад</span></button>
       <button class="tnav-b"     onclick="go('act')"><span class="nav-ico">▤</span><span>Акт</span></button>
       <button class="tnav-b"     onclick="go('stats')"><span class="nav-ico">▥</span><span>Статистика</span></button>
+      <button class="tnav-b"     onclick="go('activity')"><span class="nav-ico">≡</span><span>Журнал</span></button>
       <button class="tnav-b"     onclick="go('settings')"><span class="nav-ico">⚙</span><span>Налаштування</span></button>
     </nav>
     <div class="tright">
@@ -605,6 +608,7 @@ select{background-color:var(--bg2);color:var(--text)}
     <button class="mbtn" onclick="go('warehouse')"><span>◈</span>Склад</button>
     <button class="mbtn" onclick="go('act')"><span>▤</span>Акт</button>
     <button class="mbtn" onclick="go('stats')"><span>▥</span>Стат.</button>
+    <button class="mbtn" onclick="go('activity')"><span>≡</span>Журнал</button>
     <button class="mbtn" onclick="go('settings')"><span>⚙</span>Налашт.</button>
   </div>
 </div>
@@ -612,6 +616,8 @@ select{background-color:var(--bg2);color:var(--text)}
 <script>
 let TOKEN=localStorage.getItem('crm_token')||'';
 let TAB='dashboard';
+let activityLogs=[];
+let activitySearch='';
 let repairs=[],allRepairs=[],stats={},masters=[],clients=[],expenses=[],cash={rows:[]},parts=[];
 let settings={}, users=[];
 let settingTab='users';
@@ -677,6 +683,7 @@ async function loadStats(){stats=await api('GET','/api/stats')||{};}
 async function loadMasters(){masters=await api('GET','/api/masters')||[];}
 async function loadSettings(){settings=await api('GET','/api/settings')||{};applyAccent();}
 async function loadUsers(){users=await api('GET','/api/users')||[];}
+async function loadActivity(){activityLogs=await api('GET','/api/activity?search='+encodeURIComponent(activitySearch||''))||[];}
 async function loadClients(q=''){clients=await api('GET','/api/clients?search='+encodeURIComponent(q))||[];}
 async function loadExpenses(){expenses=await api('GET','/api/expenses?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||[];}
 async function loadCash(){cash=await api('GET','/api/cash?'+(dateFrom?'date_from='+dateFrom+'&':'')+(dateTo?'date_to='+dateTo:''))||{rows:[]};}
@@ -691,13 +698,14 @@ async function loadParts(){
 // ── NAV ──
 function go(tab){
   TAB=tab;
-  document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','warehouse','act','stats','settings'][i]===tab));
-  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','clients','reminders','finance','warehouse','act','stats','settings'][i]===tab));
+  document.querySelectorAll('.tnav-b').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','reminders','clients','finance','warehouse','act','stats','activity','settings'][i]===tab));
+  document.querySelectorAll('.mbtn').forEach((b,i)=>b.classList.toggle('on',['dashboard','repairs','clients','reminders','finance','warehouse','act','stats','activity','settings'][i]===tab));
   if(tab==='clients') loadClients().then(render);
   else if(tab==='finance') Promise.all([loadExpenses(),loadCash(),loadStats()]).then(render).then(initCharts);
   else if(tab==='warehouse') loadParts().then(render);
   else if(tab==='stats') loadStats().then(render);
   else if(tab==='dashboard') loadStats().then(render);
+  else if(tab==='activity') loadActivity().then(render);
   else if(tab==='settings') Promise.all([loadUsers(),loadSettings(),loadMasters()]).then(render);
   else render();
 }
@@ -712,6 +720,7 @@ function render(){
   else if(TAB==='warehouse') m.innerHTML=renderWarehouse();
   else if(TAB==='act')      m.innerHTML=renderAct();
   else if(TAB==='stats')    {m.innerHTML=renderStatsTab();setTimeout(initStatsCharts,50);}
+  else if(TAB==='activity') m.innerHTML=renderActivityLog();
   else                      m.innerHTML=renderSettings();
   updateOverduePill();
 }
@@ -1339,7 +1348,7 @@ function showModal(d){
       <h3>${editId?'Редагування':'Новий ремонт'} ${editId?`<span class="mid">${editId}</span>`:''}</h3>
       <div class="fg">
         <div class="frow"><label>Дата прийому</label><input class="inp" type="date" id="f-date_in" value="${d.date_in||''}"/></div>
-        <div class="frow"><label>Планова дата</label><input class="inp" type="date" id="f-date_plan" value="${d.date_plan||''}"/></div>
+        <div class="frow"><label>Дата видачі</label><input class="inp" type="date" id="f-date_out" value="${d.date_out||''}"/></div>
         <div class="frow"><label>ПІБ клієнта</label><input class="inp" id="f-client" value="${d.client||''}"/></div>
         <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" value="${d.phone||''}"/></div>
         <div class="frow"><label>Тип пристрою</label>
@@ -1347,7 +1356,6 @@ function showModal(d){
         </div>
         <div class="frow"><label>Модель</label><input class="inp" id="f-model" value="${d.model||''}"/></div>
         <div class="frow"><label>IMEI / Серійний</label><input class="inp" id="f-serial" value="${d.serial||''}"/></div>
-        <div class="frow"><label>Колір</label><input class="inp" id="f-color" value="${d.color||''}"/></div>
         <div class="frow"><label>Пароль пристрою</label><input class="inp" id="f-password" value="${d.password||''}"/></div>
         <div class="frow"><label>Комплектація</label><input class="inp" id="f-kit" value="${d.kit||''}"/></div>
         <div class="frow full"><label>Опис несправності</label><textarea class="area" id="f-problem">${d.problem||''}</textarea></div>
@@ -1358,14 +1366,13 @@ function showModal(d){
           <select class="sel" id="f-status">${STATUSES.map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
         <div class="frow"><label>Майстер</label><select class="sel" id="f-master"><option value="">—</option>${mOpts}</select></div>
-        <div class="frow"><label>Дата видачі</label><input class="inp" type="date" id="f-date_out" value="${d.date_out||''}"/></div>
         <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}"/></div>
         <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}"/></div>
-        <div class="frow"><label>Статус оплати</label>
-          <select class="sel" id="f-pay_status">${PAYS.map(s=>`<option ${d.pay_status===s?'selected':''}>${s}</option>`).join('')}</select>
-        </div>
-        <div class="frow"><label>Спосіб оплати</label>
-          <select class="sel" id="f-pay_method">${PAYMENT_METHODS.map(x=>`<option ${d.pay_method===x?'selected':''}>${x}</option>`).join('')}</select>
+        <div class="frow full"><label>Оплата</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <select class="sel" id="f-pay_status">${PAYS.map(s=>`<option ${d.pay_status===s?'selected':''}>${s}</option>`).join('')}</select>
+            <select class="sel" id="f-pay_method">${PAYMENT_METHODS.map(x=>`<option ${d.pay_method===x?'selected':''}>${x||'Спосіб оплати'}</option>`).join('')}</select>
+          </div>
         </div>
         <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes" style="min-height:44px">${d.internal_notes||''}</textarea></div>
         <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes" style="min-height:44px">${d.notes||''}</textarea></div>
@@ -1381,7 +1388,7 @@ function showModal(d){
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 async function saveRepair(){
-  const body={date_in:gv('f-date_in'),date_plan:gv('f-date_plan'),date_out:gv('f-date_out'),client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:gv('f-color'),password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:gv('f-status'),master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,pay_status:gv('f-pay_status'),pay_method:gv('f-pay_method'),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
+  const body={date_in:gv('f-date_in'),date_plan:'',date_out:gv('f-date_out'),client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:'',password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:gv('f-status'),master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,pay_status:gv('f-pay_status'),pay_method:gv('f-pay_method'),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
   if(editId)await api('PUT','/api/repairs/'+editId,body);
   else await api('POST','/api/repairs',body);
   closeModal();await loadAll();render();
@@ -2269,6 +2276,25 @@ function printAct(id){
   const r=repairs.find(x=>x.id===id);if(!r)return;
   const p=new URLSearchParams({id:r.id,date:r.date_in||'',client:r.client||'',phone:r.phone||'',type:r.type||'',model:r.model||'',serial:r.serial||'',kit:r.kit||'',problem:r.problem||'',password:r.password||'',notes:r.notes||'',condition:r.condition||'',color:r.color||'',print:'1'});
   window.open('/act-print.html?'+p.toString(),'_blank');
+}
+
+// ════════════════════════════════
+// ACTIVITY LOG
+// ════════════════════════════════
+function activityTypeLabel(t){return ({repair:'Ремонт',part:'Склад',repair_part:'Запчастина',cash:'Каса',auth:'Вхід'})[t]||t||'—'}
+function renderActivityLog(){
+  const rows=(activityLogs||[]).map(x=>`<tr>
+    <td><div class="tc">${(x.created_at||'').replace('T',' ').slice(0,19)}</div><div class="tp">${x.user||'Адмін'}</div></td>
+    <td><span class="badge diag">${activityTypeLabel(x.entity_type)}</span></td>
+    <td><div class="tc">${x.action||'—'}</div><div class="tp">${x.entity_id||''}</div></td>
+    <td>${x.old_value?`<div class="tp">Було: ${x.old_value}</div>`:''}${x.new_value?`<div class="tp">Стало: ${x.new_value}</div>`:''}${x.note?`<div>${x.note}</div>`:''}</td>
+  </tr>`).join('');
+  return `<div class="dash-head"><div class="dash-title"><h1>Журнал змін</h1><p>Хто і що робив у CRM</p></div></div>
+  <div class="toolbar">
+    <input class="inp" style="min-width:320px" placeholder="Пошук по журналу..." value="${activitySearch||''}" oninput="activitySearch=this.value;clearTimeout(window.__actTimer);window.__actTimer=setTimeout(()=>loadActivity().then(render),350)">
+    <button class="btn" onclick="activitySearch='';loadActivity().then(render)">Скинути</button>
+  </div>
+  <div class="twrap"><table><thead><tr><th>Дата / користувач</th><th>Тип</th><th>Дія</th><th>Деталі</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:30px">Журнал поки порожній</td></tr>'}</tbody></table></div>`;
 }
 
 // ════════════════════════════════
