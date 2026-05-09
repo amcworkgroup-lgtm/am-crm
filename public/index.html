@@ -1387,7 +1387,7 @@ function showModal(d){
         <div class="frow"><label>Дата прийому</label><input class="inp" type="date" id="f-date_in" value="${d.date_in||''}"/></div>
         <div class="frow"><label>Дата видачі</label><input class="inp" type="date" id="f-date_out" value="${d.date_out||''}"/></div>
         <div class="frow"><label>ПІБ клієнта</label><input class="inp" id="f-client" value="${d.client||''}"/></div>
-        <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" value="${d.phone||''}"/></div>
+        <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" type="tel" maxlength="13" value="${d.phone||'+380'}" onfocus="ensurePhonePrefix(this)" oninput="ensurePhonePrefix(this)"/></div>
         <div class="frow"><label>Тип пристрою</label>
           <select class="sel" id="f-type">${['iPhone','Samsung','iPad','MacBook','Ноутбук','Планшет','Watch','AirPods','Інше'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select>
         </div>
@@ -1418,7 +1418,41 @@ function showModal(d){
     </div>
   </div>`;
   const mr=document.getElementById('modal-r');if(mr)mr.innerHTML=html;
+  setTimeout(()=>initPhonePrefix(),0);
 }
+
+function ensurePhonePrefix(input){
+  if(!input) return;
+  let digits = String(input.value || '').replace(/\D/g,'');
+  if(digits.startsWith('380')) digits = digits.slice(3);
+  if(digits.startsWith('0')) digits = digits.slice(1);
+  digits = digits.slice(0,9);
+  input.value = '+380' + digits;
+}
+
+function initPhonePrefix(){
+  const input=document.getElementById('f-phone');
+  if(!input) return;
+  if(!input.value) input.value='+380';
+  ensurePhonePrefix(input);
+
+  input.addEventListener('keydown',function(e){
+    if((e.key==='Backspace' || e.key==='Delete') && this.selectionStart<=4){
+      e.preventDefault();
+      this.setSelectionRange(4,4);
+    }
+  });
+
+  input.addEventListener('click',function(){
+    if(this.selectionStart<4) this.setSelectionRange(4,4);
+  });
+
+  input.addEventListener('focus',function(){
+    if(!this.value) this.value='+380';
+    if(this.selectionStart<4) this.setSelectionRange(4,4);
+  });
+}
+
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 async function saveRepair(){
