@@ -143,12 +143,13 @@ function logActivity(action, entityType, entityId, oldValue='', newValue='', not
 }
 
 app.get('/api/activity', auth, (req, res) => {
-  const { search, type, date_from, date_to } = req.query;
+  const { search, type, date_from, date_to, user } = req.query;
   let sql = 'SELECT * FROM activity_log WHERE 1=1'; const p = [];
   if(type){ sql += ' AND entity_type=?'; p.push(type); }
+  if(user){ sql += ' AND user=?'; p.push(user); }
   if(date_from){ sql += ' AND date(created_at)>=?'; p.push(date_from); }
   if(date_to){ sql += ' AND date(created_at)<=?'; p.push(date_to); }
-  if(search){ sql += ' AND (action LIKE ? OR entity_type LIKE ? OR entity_id LIKE ? OR old_value LIKE ? OR new_value LIKE ? OR note LIKE ?)'; const q='%'+search+'%'; p.push(q,q,q,q,q,q); }
+  if(search){ sql += ' AND (user LIKE ? OR action LIKE ? OR entity_type LIKE ? OR entity_id LIKE ? OR old_value LIKE ? OR new_value LIKE ? OR note LIKE ?)'; const q='%'+search+'%'; p.push(q,q,q,q,q,q,q); }
   sql += ' ORDER BY id DESC LIMIT 500';
   res.json(db.prepare(sql).all(...p));
 });
