@@ -644,6 +644,105 @@ select{background-color:var(--bg2);color:var(--text)}
   .compact-repair-modal .mfoot .btn{min-width:0;flex:1}
 }
 
+
+/* ══ COMPACT REPAIR MODAL MOBILE v22 ══ */
+@media(max-width:600px){
+  .modal-ov{
+    padding:70px 8px 92px!important;
+    align-items:flex-start!important;
+  }
+  .compact-repair-modal{
+    width:100%!important;
+    max-width:100%!important;
+    padding:12px!important;
+    border-radius:16px!important;
+  }
+  .compact-repair-modal h3{
+    font-size:18px!important;
+    margin-bottom:12px!important;
+    align-items:flex-start!important;
+  }
+  .compact-repair-modal h3 span[style*="Компактний"]{
+    display:none!important;
+  }
+  .compact-repair-modal .fg{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+  .compact-repair-modal .frow label{
+    font-size:10px!important;
+    margin-bottom:2px!important;
+  }
+  .compact-repair-modal .inp,
+  .compact-repair-modal .sel{
+    height:40px!important;
+    min-height:40px!important;
+    padding:7px 10px!important;
+    font-size:14px!important;
+    border-radius:10px!important;
+  }
+  .compact-repair-modal .area{
+    min-height:54px!important;
+    max-height:90px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    border-radius:10px!important;
+  }
+  .compact-repair-modal .compact-acc{
+    border-radius:12px!important;
+    margin-top:2px!important;
+  }
+  .compact-repair-modal .compact-acc summary{
+    padding:11px 12px!important;
+    font-size:13px!important;
+  }
+  .compact-repair-modal .compact-acc summary span{
+    display:block!important;
+    margin-left:0!important;
+    margin-top:2px!important;
+    font-size:11px!important;
+  }
+  .compact-repair-modal .acc-body{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding:0 10px 10px!important;
+  }
+  .compact-repair-modal .mfoot{
+    position:sticky!important;
+    bottom:-12px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    margin:10px -12px -12px!important;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
+    background:rgba(15,17,23,.98)!important;
+    backdrop-filter:blur(14px)!important;
+    z-index:20!important;
+  }
+  .compact-repair-modal .mfoot .btn{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    font-size:13px!important;
+  }
+  .compact-repair-modal .mfoot .btn.orange{
+    grid-column:1/-1!important;
+    order:-1!important;
+  }
+}
+@media(max-width:390px){
+  .compact-repair-modal .inp,
+  .compact-repair-modal .sel,
+  .compact-repair-modal .area{
+    font-size:13px!important;
+  }
+  .compact-repair-modal h3{
+    font-size:17px!important;
+  }
+}
+
 </style>
 </head>
 <body>
