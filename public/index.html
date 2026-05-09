@@ -553,6 +553,97 @@ select{background-color:var(--bg2);color:var(--text)}
 
 
 @media(max-width:600px){.frow.full div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+
+/* ══ COMPACT REPAIR MODAL v21 ══ */
+.compact-repair-modal{
+  max-width:980px!important;
+  padding:18px!important;
+  border-radius:18px!important;
+}
+.compact-repair-modal h3{
+  margin-bottom:14px!important;
+  font-size:20px!important;
+}
+.compact-repair-modal .fg{
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:10px 12px!important;
+}
+.compact-repair-modal .frow{
+  gap:4px!important;
+}
+.compact-repair-modal .frow label{
+  font-size:10px!important;
+  letter-spacing:.35px!important;
+}
+.compact-repair-modal .inp,
+.compact-repair-modal .sel{
+  height:42px!important;
+  padding:8px 12px!important;
+  border-radius:10px!important;
+  font-size:13px!important;
+}
+.compact-repair-modal .area{
+  min-height:58px!important;
+  padding:10px 12px!important;
+  border-radius:10px!important;
+  font-size:13px!important;
+}
+.compact-repair-modal .full{grid-column:1/-1!important}
+.compact-repair-modal .compact-acc{
+  grid-column:1/-1;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
+  overflow:hidden;
+}
+.compact-repair-modal .compact-acc summary{
+  list-style:none;
+  cursor:pointer;
+  padding:12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:800;
+  color:var(--text);
+  user-select:none;
+}
+.compact-repair-modal .compact-acc summary::-webkit-details-marker{display:none}
+.compact-repair-modal .compact-acc summary:after{
+  content:'⌄';
+  color:var(--text2);
+  font-size:18px;
+  transition:transform .15s;
+}
+.compact-repair-modal .compact-acc[open] summary:after{transform:rotate(180deg)}
+.compact-repair-modal .acc-body{
+  padding:0 12px 12px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px 12px;
+}
+.compact-repair-modal .mfoot{
+  position:sticky;
+  bottom:-18px;
+  background:linear-gradient(180deg,rgba(22,27,37,.85),var(--bg2));
+  margin:14px -18px -18px!important;
+  padding:12px 18px!important;
+  border-top:1px solid var(--border)!important;
+}
+.compact-repair-modal .mfoot .btn{
+  min-width:120px;
+  height:40px;
+}
+@media(max-width:900px){
+  .compact-repair-modal .fg{grid-template-columns:repeat(2,1fr)!important}
+}
+@media(max-width:600px){
+  .compact-repair-modal{padding:14px!important}
+  .compact-repair-modal .fg,
+  .compact-repair-modal .acc-body{grid-template-columns:1fr!important}
+  .compact-repair-modal .mfoot{margin:12px -14px -14px!important;padding:10px 14px!important}
+  .compact-repair-modal .mfoot .btn{min-width:0;flex:1}
+}
+
 </style>
 </head>
 <body>
@@ -1376,44 +1467,72 @@ async function delComment(id){
 }
 
 // ── EDIT/NEW ──
-function openNew(){editId=null;showModal({date_in:new Date().toISOString().slice(0,10),status:'На діагностиці',pay_status:'Не оплачено'});}
+function openNew(){editId=null;showModal({date_in:new Date().toISOString().slice(0,10),phone:'+380',status:'На діагностиці',pay_status:'Не оплачено'});}
 function openEdit(id){editId=id;showModal(repairs.find(x=>x.id===id));}
 function showModal(d){
+  d = d || {};
+  if(!d.phone) d.phone = '+380';
   const mOpts=masters.map(m=>`<option ${d.master===m.name?'selected':''}>${m.name}</option>`).join('');
   const html=`<div class="modal-ov" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-      <h3>${editId?'Редагування':'Новий ремонт'} ${editId?`<span class="mid">${editId}</span>`:''}</h3>
+    <div class="modal compact-repair-modal">
+      <h3>${editId?'Редагування':'Новий ремонт'} ${editId?`<span class="mid">${editId}</span>`:''}<span style="margin-left:auto;color:var(--orange);font-size:12px;border:1px solid rgba(249,115,22,.5);padding:6px 10px;border-radius:10px">Компактний вигляд</span></h3>
+
       <div class="fg">
         <div class="frow"><label>Дата прийому</label><input class="inp" type="date" id="f-date_in" value="${d.date_in||''}"/></div>
         <div class="frow"><label>Дата видачі</label><input class="inp" type="date" id="f-date_out" value="${d.date_out||''}"/></div>
+        <div class="frow"><label>Статус</label>
+          <select class="sel" id="f-status">${STATUSES.map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+
         <div class="frow"><label>ПІБ клієнта</label><input class="inp" id="f-client" value="${d.client||''}"/></div>
         <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" type="tel" maxlength="13" value="${d.phone||'+380'}" onfocus="ensurePhonePrefix(this)" oninput="ensurePhonePrefix(this)"/></div>
         <div class="frow"><label>Тип пристрою</label>
           <select class="sel" id="f-type">${['iPhone','Samsung','iPad','MacBook','Ноутбук','Планшет','Watch','AirPods','Інше'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select>
         </div>
+
         <div class="frow"><label>Модель</label><input class="inp" id="f-model" value="${d.model||''}"/></div>
         <div class="frow"><label>IMEI / Серійний</label><input class="inp" id="f-serial" value="${d.serial||''}"/></div>
         <div class="frow"><label>Пароль пристрою</label><input class="inp" id="f-password" value="${d.password||''}"/></div>
-        <div class="frow"><label>Комплектація</label><input class="inp" id="f-kit" value="${d.kit||''}"/></div>
-        <div class="frow full"><label>Опис несправності</label><textarea class="area" id="f-problem">${d.problem||''}</textarea></div>
+
+        <div class="frow"><label>Майстер</label><select class="sel" id="f-master"><option value="">—</option>${mOpts}</select></div>
         <div class="frow"><label>Зовнішній стан</label>
           <select class="sel" id="f-condition">${['','Новий','Добрий','Задовільний','Поганий'].map(s=>`<option ${d.condition===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
-        <div class="frow"><label>Статус</label>
-          <select class="sel" id="f-status">${STATUSES.map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}</select>
-        </div>
-        <div class="frow"><label>Майстер</label><select class="sel" id="f-master"><option value="">—</option>${mOpts}</select></div>
-        <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}"/></div>
-        <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}"/></div>
-        <div class="frow full"><label>Оплата</label>
+        <div class="frow"><label>Оплата</label>
           <select class="sel" id="f-payment_combo">${paymentComboOptions(d.pay_status||'Не оплачено', d.pay_method||'')}</select>
         </div>
-        <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes" style="min-height:44px">${d.internal_notes||''}</textarea></div>
-        <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes" style="min-height:44px">${d.notes||''}</textarea></div>
+
+        <div class="frow full"><label>Опис несправності</label><textarea class="area" id="f-problem" placeholder="Коротко опишіть несправність...">${d.problem||''}</textarea></div>
+
+        <details class="compact-acc">
+          <summary>📋 Додатково <span style="font-weight:600;color:var(--text2);font-size:12px;margin-left:6px">комплектація, нотатки, внутрішня інформація</span></summary>
+          <div class="acc-body">
+            <div class="frow full"><label>Комплектація</label><input class="inp" id="f-kit" value="${d.kit||''}"/></div>
+            <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes">${d.internal_notes||''}</textarea></div>
+            <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes">${d.notes||''}</textarea></div>
+          </div>
+        </details>
+
+        <details class="compact-acc" open>
+          <summary>💰 Фінанси</summary>
+          <div class="acc-body">
+            <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}" placeholder="0.00"/></div>
+            <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}" placeholder="0.00"/></div>
+          </div>
+        </details>
+
+        <details class="compact-acc">
+          <summary>🛠 Запчастини та роботи</summary>
+          <div class="acc-body">
+            <div class="frow full" style="color:var(--text2);font-weight:600">Запчастини додаються у повній картці ремонту після створення замовлення.</div>
+          </div>
+        </details>
       </div>
+
       <div class="mfoot">
         <button class="btn" onclick="closeModal()">Скасувати</button>
-        <button class="btn blue" onclick="saveRepair()">Зберегти</button>
+        ${editId?`<button class="btn" onclick="printAct('${editId}')">🖨 Друк</button>`:''}
+        <button class="btn orange" onclick="saveRepair()">💾 Зберегти</button>
       </div>
     </div>
   </div>`;
@@ -1452,7 +1571,6 @@ function initPhonePrefix(){
     if(this.selectionStart<4) this.setSelectionRange(4,4);
   });
 }
-
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 async function saveRepair(){
