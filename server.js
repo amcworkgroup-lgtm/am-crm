@@ -71,6 +71,17 @@ db.exec(`
     note TEXT DEFAULT '',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    user TEXT DEFAULT 'Адмін',
+    action TEXT,
+    entity_type TEXT,
+    entity_id TEXT,
+    old_value TEXT DEFAULT '',
+    new_value TEXT DEFAULT '',
+    note TEXT DEFAULT ''
+  );
 
   CREATE TABLE IF NOT EXISTS repair_parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,11 +135,30 @@ function auth(req, res, next) {
   next();
 }
 
+function logActivity(action, entityType, entityId, oldValue='', newValue='', note='') {
+  try {
+    db.prepare(`INSERT INTO activity_log(user,action,entity_type,entity_id,old_value,new_value,note) VALUES(?,?,?,?,?,?,?)`)
+      .run('Адмін', action || '', entityType || '', String(entityId || ''), oldValue ? String(oldValue) : '', newValue ? String(newValue) : '', note ? String(note) : '');
+  } catch(e) {}
+}
+
+app.get('/api/activity', auth, (req, res) => {
+  const { search, type, date_from, date_to } = req.query;
+  let sql = 'SELECT * FROM activity_log WHERE 1=1'; const p = [];
+  if(type){ sql += ' AND entity_type=?'; p.push(type); }
+  if(date_from){ sql += ' AND date(created_at)>=?'; p.push(date_from); }
+  if(date_to){ sql += ' AND date(created_at)<=?'; p.push(date_to); }
+  if(search){ sql += ' AND (action LIKE ? OR entity_type LIKE ? OR entity_id LIKE ? OR old_value LIKE ? OR new_value LIKE ? OR note LIKE ?)'; const q='%'+search+'%'; p.push(q,q,q,q,q,q); }
+  sql += ' ORDER BY id DESC LIMIT 500';
+  res.json(db.prepare(sql).all(...p));
+});
+
 app.post('/api/login', (req, res) => {
-  if (req.body.password !== ADMIN_PASSWORD) return res.status(403).json({ error: 'Невірний пароль' });
+  if (req.body.password !== ADMIN_PASSWORD) { logActivity('Помилка входу', 'auth', '', '', '', 'Невірний пароль'); return res.status(403).json({ error: 'Невірний пароль' }); }
   const token = crypto.randomBytes(32).toString('hex');
   db.prepare('INSERT INTO sessions(token)VALUES(?)').run(token);
   db.prepare("DELETE FROM sessions WHERE created_at < datetime('now','-7 days')").run();
+  logActivity('Вхід у CRM', 'auth', 'login');
   res.json({ token });
 });
 app.post('/api/logout', auth, (req, res) => { db.prepare('DELETE FROM sessions WHERE token=?').run(req.headers['x-auth-token']); res.json({ ok:true }); });
@@ -159,6 +189,7 @@ app.post('/api/repairs', auth, (req, res) => {
   );
   db.prepare('UPDATE repairs SET additional_cost=? WHERE id=?').run(additionalCost, id);
   recalcRepairTotals(id);
+  logActivity('Створено ремонт', 'repair', id, '', `${r.client||''} ${r.type||''} ${r.model||''}`.trim());
   res.json({ id });
 });
 
@@ -172,6 +203,9 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   );
   db.prepare('UPDATE repairs SET additional_cost=? WHERE id=?').run(Number(r.additional_cost ?? r.cost ?? 0), req.params.id);
   recalcRepairTotals(req.params.id);
+  const changes = [];
+  if(old){ ['status','master','price','pay_status','pay_method','client','phone','model'].forEach(k=>{ if(String(old[k]||'') !== String(r[k]||'')) changes.push(`${k}: ${old[k]||'—'} → ${r[k]||'—'}`); }); }
+  if(changes.length) logActivity('Оновлено ремонт', 'repair', req.params.id, '', '', changes.join('; '));
   // Автозапис в касу якщо оплата щойно стала "Оплачено"
   if(old && r.pay_status === 'Оплачено' && old.pay_status !== 'Оплачено' && r.price > 0){
     const method = r.pay_method || 'Готівка';
@@ -183,13 +217,14 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   res.json({ ok:true });
 });
 
-app.patch('/api/repairs/:id/status', auth, (req, res) => { db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); res.json({ ok:true }); });
+app.patch('/api/repairs/:id/status', auth, (req, res) => { const old=db.prepare('SELECT status FROM repairs WHERE id=?').get(req.params.id); db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); logActivity('Змінено статус', 'repair', req.params.id, old?old.status:'', req.body.status||''); res.json({ ok:true }); });
 app.patch('/api/repairs/:id/pay', auth, (req, res) => {
   const repair = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
   if(!repair) return res.status(404).json({error:'Not found'});
   const pay_status = req.body.pay_status || repair.pay_status || 'Не оплачено';
   const pay_method = req.body.pay_method !== undefined ? req.body.pay_method : (repair.pay_method || '');
   db.prepare('UPDATE repairs SET pay_status=?,pay_method=? WHERE id=?').run(pay_status, pay_method||'', req.params.id);
+  if(String(repair.pay_status||'')!==String(pay_status||'') || String(repair.pay_method||'')!==String(pay_method||'')) logActivity('Змінено оплату', 'repair', req.params.id, `${repair.pay_status||'—'} / ${repair.pay_method||'—'}`, `${pay_status||'—'} / ${pay_method||'—'}`);
   // Автозапис в касу при оплаті
   if(pay_status === 'Оплачено' && repair.pay_status !== 'Оплачено' && repair.price > 0){
     const method = pay_method || repair.pay_method || 'Готівка';
@@ -200,8 +235,8 @@ app.patch('/api/repairs/:id/pay', auth, (req, res) => {
   }
   res.json({ ok:true });
 });
-app.patch('/api/repairs/:id/price', auth, (req, res) => { db.prepare('UPDATE repairs SET price=? WHERE id=?').run(req.body.price||0, req.params.id); res.json({ ok:true }); });
-app.delete('/api/repairs/:id', auth, (req, res) => { db.prepare('DELETE FROM repairs WHERE id=?').run(req.params.id); db.prepare('DELETE FROM repair_comments WHERE repair_id=?').run(req.params.id); res.json({ ok:true }); });
+app.patch('/api/repairs/:id/price', auth, (req, res) => { const old=db.prepare('SELECT price FROM repairs WHERE id=?').get(req.params.id); db.prepare('UPDATE repairs SET price=? WHERE id=?').run(req.body.price||0, req.params.id); logActivity('Змінено ціну', 'repair', req.params.id, old?old.price:'', req.body.price||0); res.json({ ok:true }); });
+app.delete('/api/repairs/:id', auth, (req, res) => { const old=db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id); db.prepare('DELETE FROM repairs WHERE id=?').run(req.params.id); db.prepare('DELETE FROM repair_comments WHERE repair_id=?').run(req.params.id); logActivity('Видалено ремонт', 'repair', req.params.id, old?`${old.client||''} ${old.type||''} ${old.model||''}`:'', ''); res.json({ ok:true }); });
 
 // PHOTOS
 app.post('/api/repairs/:id/photos', auth, upload.array('photos',10), (req, res) => {
@@ -258,7 +293,7 @@ app.get('/api/cash', auth, (req, res) => {
   const card = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as v FROM cash_log WHERE method='Картка'").get().v;
   res.json({ rows, cash, card, total: cash+card });
 });
-app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,description,repair_id}=req.body; db.prepare('INSERT INTO cash_log(date,type,amount,method,description,repair_id)VALUES(?,?,?,?,?,?)').run(date,type,amount||0,method||'Готівка',description||'',repair_id||null); res.json({ ok:true }); });
+app.post('/api/cash', auth, (req, res) => { const {date,type,amount,method,description,repair_id}=req.body; const info=db.prepare('INSERT INTO cash_log(date,type,amount,method,description,repair_id)VALUES(?,?,?,?,?,?)').run(date,type,amount||0,method||'Готівка',description||'',repair_id||null); logActivity('Додано касовий запис', 'cash', info.lastInsertRowid, '', `${type} ${amount||0} ${method||'Готівка'} ${description||''}`); res.json({ ok:true }); });
 
 app.delete('/api/cash/:id', auth, (req, res) => {
   const { admin_password } = req.body || {};
@@ -266,6 +301,7 @@ app.delete('/api/cash/:id', auth, (req, res) => {
   const row = db.prepare('SELECT * FROM cash_log WHERE id=?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Запис каси не знайдено' });
   db.prepare('DELETE FROM cash_log WHERE id=?').run(req.params.id);
+  logActivity('Видалено касовий запис', 'cash', req.params.id, row?`${row.type} ${row.amount} ${row.method} ${row.description||''}`:'', '');
   res.json({ ok:true });
 });
 
@@ -615,6 +651,7 @@ app.post('/api/parts', auth, (req, res) => {
   if (Number(r.qty||0) !== 0) {
     db.prepare('INSERT INTO stock_movements(part_id,type,qty,note) VALUES(?,?,?,?)').run(info.lastInsertRowid, 'in', Number(r.qty||0), 'Початковий залишок');
   }
+  logActivity('Створено запчастину', 'part', info.lastInsertRowid, '', `${r.name||''} ${r.category||''}`);
   res.json({ id: info.lastInsertRowid });
 });
 
@@ -640,8 +677,10 @@ app.patch('/api/parts/:id/adjust', auth, (req, res) => {
 });
 
 app.delete('/api/parts/:id', auth, (req, res) => {
+  const old=db.prepare('SELECT * FROM parts WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM parts WHERE id=?').run(req.params.id);
   db.prepare('DELETE FROM stock_movements WHERE part_id=?').run(req.params.id);
+  logActivity('Видалено запчастину', 'part', req.params.id, old?old.name:'', '');
   res.json({ ok:true });
 });
 
