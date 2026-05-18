@@ -1804,9 +1804,28 @@ function renderReminders(){
 // ════════════════════════════════
 // CLIENTS TAB
 // ════════════════════════════════
+
+let clientSearchQ = '';
+let clientDeviceFilter = '';
+
 function renderClients(){
-  const rows=clients.length?clients.map(c=>`
-    <div class="client-card" onclick="openClientDetail('${encodeURIComponent(c.phone)}','${c.client.replace(/'/g,"\\'")}')">
+  const norm = v => String(v || '').toLowerCase().trim();
+
+  const deviceOk = c => {
+    const d = norm(clientDeviceFilter);
+    if(!d) return true;
+
+    return (allRepairs || []).some(r => {
+      if(String(r.phone || '') !== String(c.phone || '')) return false;
+      const devText = norm((r.type || '') + ' ' + (r.model || ''));
+      return devText.includes(d);
+    });
+  };
+
+  const filteredClients = (clients || []).filter(deviceOk);
+
+  const rows = filteredClients.length ? filteredClients.map(c => `
+    <div class="client-card" onclick="openClientDetail('${encodeURIComponent(c.phone)}','${String(c.client || '').replace(/'/g,"\\'")}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
           <div style="font-weight:600;font-size:14px">${c.client}</div>
@@ -1823,31 +1842,32 @@ function renderClients(){
         <span>Сума: <b style="color:var(--green)">${(+c.total_price).toLocaleString()} ₴</b></span>
         <span>Останній: <b style="color:var(--text)">${c.last_visit||'—'}</b></span>
       </div>
-    </div>`).join(''):`<div style="text-align:center;padding:40px;color:var(--text3)">Клієнтів не знайдено</div>`;
+    </div>`).join('') : `<div style="text-align:center;padding:40px;color:var(--text3)">Клієнтів не знайдено</div>`;
 
   return`
-  <div class="toolbar">
-    <input id="client-search-input" class="inp" placeholder="Пошук клієнта або телефону..." value="" />
-<select id="client-device-filter" class="sel">
-  <option value="">Всі пристрої</option>
-  <option value="iphone">iPhone</option>
-  <option value="macbook">MacBook</option>
-  <option value="ipad">iPad</option>
-  <option value="samsung">Samsung</option>
-  <option value="watch">Watch</option>
-  <option value="airpods">AirPods</option>
-  <option value="інше">Інше</option>
-</select>
-<select id="client-device-filter" class="sel">
-  <option value="">Всі пристрої</option>
-  <option value="iphone">iPhone</option>
-  <option value="macbook">MacBook</option>
-  <option value="ipad">iPad</option>
-  <option value="samsung">Samsung</option>
-  <option value="watch">Watch</option>
-  <option value="airpods">AirPods</option>
-  <option value="інше">Інше</option>
-</select>
+  <div class="toolbar" style="align-items:center">
+    <input
+      class="inp"
+      style="width:260px"
+      placeholder="Пошук клієнта або телефону..."
+      value="${clientSearchQ || ''}"
+      oninput="clientSearchQ=this.value;loadClients(this.value).then(render)"
+    />
+    <select
+      class="sel"
+      style="min-width:180px"
+      onchange="clientDeviceFilter=this.value;render()"
+    >
+      <option value="" ${clientDeviceFilter===''?'selected':''}>Всі пристрої</option>
+      <option value="iphone" ${clientDeviceFilter==='iphone'?'selected':''}>iPhone</option>
+      <option value="macbook" ${clientDeviceFilter==='macbook'?'selected':''}>MacBook</option>
+      <option value="ipad" ${clientDeviceFilter==='ipad'?'selected':''}>iPad</option>
+      <option value="samsung" ${clientDeviceFilter==='samsung'?'selected':''}>Samsung</option>
+      <option value="watch" ${clientDeviceFilter==='watch'?'selected':''}>Watch</option>
+      <option value="airpods" ${clientDeviceFilter==='airpods'?'selected':''}>AirPods</option>
+      <option value="інше" ${clientDeviceFilter==='інше'?'selected':''}>Інше</option>
+    </select>
+  </div>
   <div>${rows}</div>
   <div id="modal-r"></div>`;
 }
@@ -2939,78 +2959,5 @@ window.onload=()=>{
   }
 };
 </script>
-
-<script id="client-search-fix-v24">
-let clientSearchQ = '';
-
-function renderClientsFixed(){
-  const cards = document.querySelectorAll('.client-card');
-  const q = String(clientSearchQ || '').trim().toLowerCase();
-
-  cards.forEach(card => {
-    const text = card.innerText.toLowerCase();
-    card.style.display = (!q || text.includes(q)) ? '' : 'none';
-  });
-}
-
-document.addEventListener('input', function(e){
-  const el = e.target;
-  if(!el) return;
-
-  const ph = (el.getAttribute('placeholder') || '').toLowerCase();
-
-  if(ph.includes('пошук клієнта') || ph.includes('телефону')){
-    clientSearchQ = el.value || '';
-    renderClientsFixed();
-  }
-});
-
-document.addEventListener('DOMContentLoaded', function(){
-  setTimeout(renderClientsFixed, 300);
-});
-</script>
-
-
-<script id="client-search-device-filter-v26">
-window.clientSearchQ = window.clientSearchQ || '';
-window.clientDeviceFilter = window.clientDeviceFilter || '';
-
-function applyClientFilters(){
-  const q = String(window.clientSearchQ || '').trim().toLowerCase();
-  const device = String(window.clientDeviceFilter || '').trim().toLowerCase();
-  const cards = document.querySelectorAll('.client-card');
-
-  cards.forEach(card => {
-    const text = card.innerText.toLowerCase();
-    const okSearch = !q || text.includes(q);
-    const okDevice = !device || text.includes(device);
-    card.style.display = (okSearch && okDevice) ? '' : 'none';
-  });
-}
-
-document.addEventListener('input', function(e){
-  const el = e.target;
-  if(el && el.id === 'client-search-input'){
-    window.clientSearchQ = el.value || '';
-    applyClientFilters();
-  }
-});
-
-document.addEventListener('change', function(e){
-  const el = e.target;
-  if(el && el.id === 'client-device-filter'){
-    window.clientDeviceFilter = el.value || '';
-    applyClientFilters();
-  }
-});
-
-const oldRenderClients = window.renderClients;
-window.renderClients = function(){
-  const html = oldRenderClients ? oldRenderClients.apply(this, arguments) : '';
-  setTimeout(applyClientFilters, 50);
-  return html;
-};
-</script>
-
 </body>
 </html>
