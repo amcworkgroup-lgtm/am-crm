@@ -1827,7 +1827,18 @@ function renderClients(){
 
   return`
   <div class="toolbar">
-    <input class="inp" style="width:260px" placeholder="Пошук клієнта або телефону..." oninput="loadClients(this.value).then(render)"/>
+    <input class="inp" style="width:260px" placeholder="Пошук клієнта або телефону...">
+<select id="client-device-filter" class="sel" onchange="clientDeviceFilter=this.value;renderClientsFixed()">
+<option value="">Всі пристрої</option>
+<option value="iphone">iPhone</option>
+<option value="macbook">MacBook</option>
+<option value="ipad">iPad</option>
+<option value="samsung">Samsung</option>
+<option value="watch">Watch</option>
+<option value="airpods">AirPods</option>
+<option value="інше">Інше</option>
+</select>
+ oninput="loadClients(this.value).then(render)"/>
   </div>
   <div>${rows}</div>
   <div id="modal-r"></div>`;
@@ -2920,5 +2931,56 @@ window.onload=()=>{
   }
 };
 </script>
+
+<script id="client-search-fix-v24">
+let clientSearchQ = '';
+
+function renderClientsFixed(){
+  const cards = document.querySelectorAll('.client-card');
+  const q = String(clientSearchQ || '').trim().toLowerCase();
+
+  cards.forEach(card => {
+    const text = card.innerText.toLowerCase();
+    card.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
+document.addEventListener('input', function(e){
+  const el = e.target;
+  if(!el) return;
+
+  const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+
+  if(ph.includes('пошук клієнта') || ph.includes('телефону')){
+    clientSearchQ = el.value || '';
+    renderClientsFixed();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(renderClientsFixed, 300);
+});
+</script>
+
+
+<script id="client-device-filter-v25">
+let clientDeviceFilter='';
+
+function renderClientsFixed(){
+  const cards = document.querySelectorAll('.client-card');
+  const q = String(window.clientSearchQ || '').trim().toLowerCase();
+  const device = String(clientDeviceFilter || '').trim().toLowerCase();
+
+  cards.forEach(card => {
+    const text = card.innerText.toLowerCase();
+
+    const matchSearch = !q || text.includes(q);
+    const matchDevice = !device || text.includes(device);
+
+    card.style.display = (matchSearch && matchDevice) ? '' : 'none';
+  });
+}
+</script>
+
 </body>
 </html>
