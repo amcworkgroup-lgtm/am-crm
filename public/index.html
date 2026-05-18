@@ -743,29 +743,18 @@ select{background-color:var(--bg2);color:var(--text)}
   }
 }
 
-</style>
 
-<style id="status-row-colors">
-.tr-status-diagnostic td:first-child{
-border-left:4px solid #3b82f6!important;
-}
-.tr-status-progress td:first-child{
-border-left:4px solid #f59e0b!important;
-}
-.tr-status-wait td:first-child{
-border-left:4px solid #a855f7!important;
-}
-.tr-status-ready td:first-child{
-border-left:4px solid #22c55e!important;
-}
-.tr-status-issued td:first-child{
-border-left:4px solid #9ca3af!important;
-}
-.tr-status-cancel td:first-child{
-border-left:4px solid #ef4444!important;
-}
-</style>
+/* REAL STATUS BORDERS + PROBLEM PREVIEW */
+tr.tr-status-diagnostic td:first-child{border-left:4px solid #3b82f6!important}
+tr.tr-status-progress td:first-child{border-left:4px solid #f59e0b!important}
+tr.tr-status-wait td:first-child{border-left:4px solid #a855f7!important}
+tr.tr-status-ready td:first-child{border-left:4px solid #22c55e!important}
+tr.tr-status-issued td:first-child{border-left:4px solid #9ca3af!important}
+tr.tr-status-cancel td:first-child{border-left:4px solid #ef4444!important}
+.repair-problem-preview{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+@media(max-width:600px){.stats-grid{grid-template-columns:repeat(2,1fr)!important;max-width:none!important}.repair-problem-preview{max-width:100%}}
 
+</style>
 </head>
 <body>
 
@@ -839,10 +828,10 @@ let filterStatus='',filterMaster='',searchQ='',sortField='',compactMode=false,fi
 let dateFrom='',dateTo='';
 let actId='',editId=null,detailId=null,partEditId=null;
 
-const STATUSES=['На діагностиці','В ремонті','Готово','Видано'];
+const STATUSES=['На діагностиці','В ремонті','Очікує запчастину','Готово','Видано','Відмова'];
 const PAYS=['Не оплачено','Частково','Оплачено'];
 const PAYMENT_METHODS=['','Готівка','Картка','Переказ','Безготівка'];
-const SB={'На діагностиці':'diag','В ремонті':'work','Готово':'ready','Видано':'issued'};
+const SB={'На діагностиці':'diag','В ремонті':'work','Очікує запчастину':'partial','Готово':'ready','Видано':'issued','Відмова':'unpaid'};
 const PB={'Не оплачено':'unpaid','Частково':'partial','Оплачено':'paid'};
 function paymentComboOptions(currentStatus='', currentMethod=''){
   const opts=[{label:'Не оплачено',status:'Не оплачено',method:''}];
@@ -901,7 +890,7 @@ async function loadAll(){
 }
 async function loadRepairs(){
   let u='/api/repairs?';
-  if(filterStatus && filterStatus!=='__overdue')u+='status='+encodeURIComponent(filterStatus)+'&';
+  if(filterStatus && !['__overdue','__inwork'].includes(filterStatus))u+='status='+encodeURIComponent(filterStatus)+'&';
   if(filterStatus==='__overdue')u+='overdue=1&';
   if(filterMaster)u+='master='+encodeURIComponent(filterMaster)+'&';
   if(searchQ)u+='search='+encodeURIComponent(searchQ)+'&';
@@ -909,6 +898,9 @@ async function loadRepairs(){
   if(dateTo)u+='date_to='+dateTo+'&';
   if(sortField)u+='sort='+sortField;
   repairs=await api('GET',u)||[];
+  if(filterStatus==='__inwork'){
+    repairs=repairs.filter(r=>['На діагностиці','В ремонті','В роботі','Очікує запчастину'].includes(r.status));
+  }
 }
 async function loadAllRepairs(){
   allRepairs=await api('GET','/api/repairs?sort=date')||[];
@@ -999,7 +991,8 @@ async function quickPayCombo(id,value){
 }
 async function quickStatus(id,status){
   await api('PATCH','/api/repairs/'+id+'/status',{status});
-  const r=repairs.find(x=>x.id===id);if(r)r.status=status;
+  const r=repairs.find(x=>x.id===id) || allRepairs.find(x=>x.id===id);
+  if(r){r.status=status; r.date_out = status==='Видано' ? (r.date_out || new Date().toISOString().slice(0,10)) : '';}
   await Promise.all([loadStats(),loadAllRepairs()]);render();
 }
 async function quickPay(id,pay,method){
@@ -1100,6 +1093,18 @@ function statOverdueCount(){
   return (stats.overdue!=null) ? (+stats.overdue||0) : getAllRepairs().filter(r=>r.date_plan&&r.date_plan<today&&!['Готово','Видано','Відмова','Отказ'].includes(r.status)).length;
 }
 
+
+function getRepairRowClass(status){
+  if(status==='На діагностиці' || status==='Діагностика') return 'tr-status-diagnostic';
+  if(status==='В ремонті' || status==='В роботі') return 'tr-status-progress';
+  if(status==='Очікує запчастину') return 'tr-status-wait';
+  if(status==='Готово') return 'tr-status-ready';
+  if(status==='Видано') return 'tr-status-issued';
+  if(['Відмова','Отказ','Відмовився'].includes(status)) return 'tr-status-cancel';
+  return '';
+}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+
 function renderRepairs(){
   const today=new Date().toISOString().slice(0,10);
   const masterOpts=masters.map(m=>`<option value="${m.name}" ${filterMaster===m.name?'selected':''}>${m.name}</option>`).join('');
@@ -1109,9 +1114,9 @@ function renderRepairs(){
     const ov=r.date_plan&&r.date_plan<today&&!['Готово','Видано'].includes(r.status);
     return`<tr class="${ov?'overdue-row':''} ${compactMode?'compact-row':''} ${getRepairRowClass(r.status)}" onclick="openDetail('${r.id}')" style="cursor:pointer">
       <td class="tid">${r.id}</td>
-      <td>${r.date_in||'—'}</td>
+      <td>${r.date_in||'—'}${r.date_out?`<div class="tp">видано: ${r.date_out}</div>`:''}</td>
       <td><div class="tc">${r.client}</div><div class="tp">${r.phone}</div></td>
-      <td>${r.type} ${r.model}</td>
+      <td><div>${r.type} ${r.model}</div><div class="tp repair-problem-preview" title="${escapeHtml(r.problem||'')}">${r.problem||''}</div></td>
       <td onclick="event.stopPropagation()">${statusBadge(r)}</td>
       <td>${r.master||'—'}${ov?'<span class="overdue-dot"></span>':''}</td>
       <td style="font-family:var(--mono)" ondblclick="editPrice(event,'${r.id}',${r.price||0})" title="Двічі клікніть для редагування">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</td>
@@ -1152,8 +1157,9 @@ function renderRepairs(){
   }).join(''):`<div style="text-align:center;padding:40px;color:var(--text3)">Ремонтів не знайдено</div>`;
 
   return`
-  <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);max-width:800px">
-    <div class="sc c-blue ${filterStatus===''?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='';reloadRep()"><span class="sc-icon">🔧</span><div class="sc-l">Активні</div><div class="sc-v blue">${stats.active||getAllRepairs().filter(r=>!['Видано','Відмова','Отказ','Відмовився'].includes(r.status)).length}</div></div>
+  <div class="stats-grid" style="grid-template-columns:repeat(7,1fr);max-width:980px">
+    <div class="sc c-blue ${filterStatus===''?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='';reloadRep()"><span class="sc-icon">🔧</span><div class="sc-l">Всі статуси</div><div class="sc-v blue">${getAllRepairs().length}</div></div>
+    <div class="sc c-amber ${filterStatus==='__inwork'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='__inwork';reloadRep()"><span class="sc-icon">🛠</span><div class="sc-l">В роботі</div><div class="sc-v amber">${getAllRepairs().filter(r=>['На діагностиці','В ремонті','В роботі','Очікує запчастину'].includes(r.status)).length}</div></div>
     <div class="sc c-red ${filterStatus==='__overdue'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='__overdue';reloadRep()"><span class="sc-icon">⚠️</span><div class="sc-l">Прострочено</div><div class="sc-v red">${stats.overdue||0}</div></div>
     <div class="sc c-blue ${filterStatus==='На діагностиці'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='На діагностиці';reloadRep()"><span class="sc-icon">🔍</span><div class="sc-l">Діагностика</div><div class="sc-v blue">${statCountStatus(['На діагностиці','Діагностика'])}</div></div>
     <div class="sc c-amber ${filterStatus==='В ремонті'?'sc-on':''}" style="cursor:pointer" onclick="filterStatus='В ремонті';reloadRep()"><span class="sc-icon">⚙️</span><div class="sc-l">В ремонті</div><div class="sc-v amber">${statCountStatus(['В ремонті','В роботі'])}</div></div>
@@ -1163,7 +1169,7 @@ function renderRepairs(){
   <div class="toolbar">
     <input class="inp" style="width:180px" placeholder="Пошук..." value="${searchQ}" oninput="searchQ=this.value;reloadRep()"/>
     <select class="sel" onchange="filterStatus=this.value;reloadRep()">
-      <option value="">Всі статуси</option>
+      <option value="">Всі статуси</option><option value="__inwork" ${filterStatus==='__inwork'?'selected':''}>В роботі</option>
       ${STATUSES.map(s=>`<option value="${s}" ${filterStatus===s?'selected':''}>${s}</option>`).join('')}
     </select>
     <select class="sel" onchange="filterMaster=this.value;reloadRep()">
@@ -1695,7 +1701,9 @@ function initPhonePrefix(){
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 async function saveRepair(){
-  const body={date_in:gv('f-date_in'),date_plan:'',date_out:gv('f-date_out'),client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:'',password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:gv('f-status'),master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,...parsePaymentCombo(gv('f-payment_combo')),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
+  const st=gv('f-status');
+  const outDate = st==='Видано' ? (gv('f-date_out') || new Date().toISOString().slice(0,10)) : '';
+  const body={date_in:gv('f-date_in'),date_plan:'',date_out:outDate,client:gv('f-client'),phone:gv('f-phone'),type:gv('f-type'),model:gv('f-model'),serial:gv('f-serial'),color:'',password:gv('f-password'),kit:gv('f-kit'),problem:gv('f-problem'),condition:gv('f-condition'),status:st,master:gv('f-master'),additional_cost:parseFloat(gv('f-cost'))||0,cost:parseFloat(gv('f-cost'))||0,price:parseFloat(gv('f-price'))||0,...parsePaymentCombo(gv('f-payment_combo')),notes:gv('f-notes'),internal_notes:gv('f-internal_notes')};
   if(editId)await api('PUT','/api/repairs/'+editId,body);
   else await api('POST','/api/repairs',body);
   closeModal();await loadAll();render();
@@ -2912,18 +2920,5 @@ window.onload=()=>{
   }
 };
 </script>
-
-<script>
-function getRepairRowClass(status){
-if(status==='На діагностиці') return 'tr-status-diagnostic';
-if(status==='В ремонті') return 'tr-status-progress';
-if(status==='Очікує запчастину') return 'tr-status-wait';
-if(status==='Готово') return 'tr-status-ready';
-if(status==='Видано') return 'tr-status-issued';
-if(status==='Відмова') return 'tr-status-cancel';
-return '';
-}
-</script>
-
 </body>
 </html>
