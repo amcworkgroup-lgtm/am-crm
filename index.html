@@ -744,6 +744,17 @@ select{background-color:var(--bg2);color:var(--text)}
 }
 
 </style>
+
+<style>
+/* STATUS BORDER PATCH */
+tr.tr-status-diagnostic td:first-child{border-left:4px solid #3b82f6!important}
+tr.tr-status-progress td:first-child{border-left:4px solid #f59e0b!important}
+tr.tr-status-wait td:first-child{border-left:4px solid #a855f7!important}
+tr.tr-status-ready td:first-child{border-left:4px solid #22c55e!important}
+tr.tr-status-issued td:first-child{border-left:4px solid #9ca3af!important}
+tr.tr-status-cancel td:first-child{border-left:4px solid #ef4444!important}
+</style>
+
 </head>
 <body>
 
@@ -2890,5 +2901,18 @@ window.onload=()=>{
   }
 };
 </script>
+
+<script>
+function getRepairRowClass(status){
+ if(status==='На діагностиці') return 'tr-status-diagnostic';
+ if(status==='В ремонті') return 'tr-status-progress';
+ if(status==='Очікує запчастину') return 'tr-status-wait';
+ if(status==='Готово') return 'tr-status-ready';
+ if(status==='Видано') return 'tr-status-issued';
+ if(status==='Відмова') return 'tr-status-cancel';
+ return '';
+}
+</script>
+
 </body>
 </html>
