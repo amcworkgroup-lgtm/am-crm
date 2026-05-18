@@ -218,7 +218,15 @@ app.put('/api/repairs/:id', auth, (req, res) => {
   res.json({ ok:true });
 });
 
-app.patch('/api/repairs/:id/status', auth, (req, res) => { const old=db.prepare('SELECT status FROM repairs WHERE id=?').get(req.params.id); db.prepare('UPDATE repairs SET status=? WHERE id=?').run(req.body.status, req.params.id); logActivity('Змінено статус', 'repair', req.params.id, old?old.status:'', req.body.status||''); res.json({ ok:true }); });
+app.patch('/api/repairs/:id/status', auth, (req, res) => {
+  const old=db.prepare('SELECT status,date_out FROM repairs WHERE id=?').get(req.params.id);
+  const status=req.body.status||'';
+  const today=new Date().toISOString().slice(0,10);
+  const dateOut = status==='Видано' ? (old && old.date_out ? old.date_out : today) : null;
+  db.prepare('UPDATE repairs SET status=?, date_out=? WHERE id=?').run(status, dateOut, req.params.id);
+  logActivity('Змінено статус', 'repair', req.params.id, old?old.status:'', status);
+  res.json({ ok:true, date_out:dateOut });
+});
 app.patch('/api/repairs/:id/pay', auth, (req, res) => {
   const repair = db.prepare('SELECT * FROM repairs WHERE id=?').get(req.params.id);
   if(!repair) return res.status(404).json({error:'Not found'});
