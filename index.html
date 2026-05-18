@@ -1805,24 +1805,28 @@ function renderReminders(){
 // CLIENTS TAB
 // ════════════════════════════════
 
+
 let clientSearchQ = '';
 let clientDeviceFilter = '';
 
 function renderClients(){
   const norm = v => String(v || '').toLowerCase().trim();
 
-  const deviceOk = c => {
+  const filteredClients = (clients || []).filter(c => {
+    const q = norm(clientSearchQ);
     const d = norm(clientDeviceFilter);
-    if(!d) return true;
 
-    return (allRepairs || []).some(r => {
+    const clientText = norm(`${c.client || ''} ${c.phone || ''}`);
+    const searchOk = !q || clientText.includes(q);
+
+    const deviceOk = !d || (allRepairs || []).some(r => {
       if(String(r.phone || '') !== String(c.phone || '')) return false;
-      const devText = norm((r.type || '') + ' ' + (r.model || ''));
+      const devText = norm(`${r.type || ''} ${r.model || ''}`);
       return devText.includes(d);
     });
-  };
 
-  const filteredClients = (clients || []).filter(deviceOk);
+    return searchOk && deviceOk;
+  });
 
   const rows = filteredClients.length ? filteredClients.map(c => `
     <div class="client-card" onclick="openClientDetail('${encodeURIComponent(c.phone)}','${String(c.client || '').replace(/'/g,"\\'")}')">
@@ -1851,7 +1855,8 @@ function renderClients(){
       style="width:260px"
       placeholder="Пошук клієнта або телефону..."
       value="${clientSearchQ || ''}"
-      oninput="clientSearchQ=this.value;loadClients(this.value).then(render)"
+      oninput="clientSearchQ=this.value;render()"
+      autocomplete="off"
     />
     <select
       class="sel"
