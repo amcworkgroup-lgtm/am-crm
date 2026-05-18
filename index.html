@@ -745,14 +745,25 @@ select{background-color:var(--bg2);color:var(--text)}
 
 </style>
 
-<style>
-/* STATUS BORDER PATCH */
-tr.tr-status-diagnostic td:first-child{border-left:4px solid #3b82f6!important}
-tr.tr-status-progress td:first-child{border-left:4px solid #f59e0b!important}
-tr.tr-status-wait td:first-child{border-left:4px solid #a855f7!important}
-tr.tr-status-ready td:first-child{border-left:4px solid #22c55e!important}
-tr.tr-status-issued td:first-child{border-left:4px solid #9ca3af!important}
-tr.tr-status-cancel td:first-child{border-left:4px solid #ef4444!important}
+<style id="status-row-colors">
+.tr-status-diagnostic td:first-child{
+border-left:4px solid #3b82f6!important;
+}
+.tr-status-progress td:first-child{
+border-left:4px solid #f59e0b!important;
+}
+.tr-status-wait td:first-child{
+border-left:4px solid #a855f7!important;
+}
+.tr-status-ready td:first-child{
+border-left:4px solid #22c55e!important;
+}
+.tr-status-issued td:first-child{
+border-left:4px solid #9ca3af!important;
+}
+.tr-status-cancel td:first-child{
+border-left:4px solid #ef4444!important;
+}
 </style>
 
 </head>
@@ -1096,7 +1107,7 @@ function renderRepairs(){
   // DESKTOP TABLE ROWS
   const tableRows=repairs.length?repairs.map(r=>{
     const ov=r.date_plan&&r.date_plan<today&&!['Готово','Видано'].includes(r.status);
-    return`<tr class="${ov?'overdue-row':''} ${compactMode?'compact-row':''}" onclick="openDetail('${r.id}')" style="cursor:pointer">
+    return`<tr class="${ov?'overdue-row':''} ${compactMode?'compact-row':''} ${getRepairRowClass(r.status)}" onclick="openDetail('${r.id}')" style="cursor:pointer">
       <td class="tid">${r.id}</td>
       <td>${r.date_in||'—'}</td>
       <td><div class="tc">${r.client}</div><div class="tp">${r.phone}</div></td>
@@ -2904,13 +2915,13 @@ window.onload=()=>{
 
 <script>
 function getRepairRowClass(status){
- if(status==='На діагностиці') return 'tr-status-diagnostic';
- if(status==='В ремонті') return 'tr-status-progress';
- if(status==='Очікує запчастину') return 'tr-status-wait';
- if(status==='Готово') return 'tr-status-ready';
- if(status==='Видано') return 'tr-status-issued';
- if(status==='Відмова') return 'tr-status-cancel';
- return '';
+if(status==='На діагностиці') return 'tr-status-diagnostic';
+if(status==='В ремонті') return 'tr-status-progress';
+if(status==='Очікує запчастину') return 'tr-status-wait';
+if(status==='Готово') return 'tr-status-ready';
+if(status==='Видано') return 'tr-status-issued';
+if(status==='Відмова') return 'tr-status-cancel';
+return '';
 }
 </script>
 
