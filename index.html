@@ -1114,7 +1114,7 @@ function renderRepairs(){
     const ov=r.date_plan&&r.date_plan<today&&!['Готово','Видано'].includes(r.status);
     return`<tr class="${ov?'overdue-row':''} ${compactMode?'compact-row':''} ${getRepairRowClass(r.status)}" onclick="openDetail('${r.id}')" style="cursor:pointer">
       <td class="tid">${r.id}</td>
-      <td>${r.date_in||'—'}${r.date_out?`<div class="tp">видано: ${r.date_out}</div>`:''}</td>
+      <td>${r.date||r.payment_date||(r.created_at||'').slice(0,10)||'—'}${r.date_out?`<div class="tp">видано: ${r.date_out}</div>`:''}</td>
       <td><div class="tc">${r.client}</div><div class="tp">${r.phone}</div></td>
       <td><div>${r.type} ${r.model}</div><div class="tp repair-problem-preview" title="${escapeHtml(r.problem||'')}">${r.problem||''}</div></td>
       <td onclick="event.stopPropagation()">${statusBadge(r)}</td>
@@ -1135,7 +1135,7 @@ function renderRepairs(){
     return`<div class="rep-card${ov?' overdue-row':''}" onclick="openDetail('${r.id}')">
       <div class="rep-card-top">
         <div>
-          <div class="rep-card-id">${r.id} · ${r.date_in||'—'}</div>
+          <div class="rep-card-id">${r.id} · ${r.date||r.payment_date||(r.created_at||'').slice(0,10)||'—'}</div>
           <div class="rep-card-name">${r.client}</div>
           <div class="rep-card-phone">${r.phone}</div>
           <div class="rep-card-device">${r.type} ${r.model}${r.master?' · '+r.master:''}</div>
@@ -1345,7 +1345,7 @@ async function openDetail(id){
             <div class="det-label">Деталі</div>
             <div style="font-size:12px;line-height:1.8">
               Майстер: <b>${r.master||'—'}</b><br>
-              Прийнято: <b>${r.date_in||'—'}</b>${r.date_plan?` · Планово: <b style="color:${ov?'var(--red)':'var(--amber)'}">${r.date_plan}</b>`:''}<br>
+              Прийнято: <b>${r.date||r.payment_date||(r.created_at||'').slice(0,10)||'—'}</b>${r.date_plan?` · Планово: <b style="color:${ov?'var(--red)':'var(--amber)'}">${r.date_plan}</b>`:''}<br>
               Ціна клієнту: <b style="color:var(--green)">${r.price?(+r.price).toLocaleString()+' ₴':'—'}</b> · ${r.pay_status}<br>
               Запчастини закуп: <b style="color:var(--amber)">${usedPartsCost.toLocaleString()} ₴</b> · Додаткова собівартість: <b style="color:var(--amber)">${extraCost.toLocaleString()} ₴</b><br>
               Загальна собівартість: <b style="color:var(--red)">${totalCost.toLocaleString()} ₴</b> · Продаж запчастин: <b style="color:var(--blue)">${usedPartsSell.toLocaleString()} ₴</b><br>
