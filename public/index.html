@@ -553,6 +553,196 @@ select{background-color:var(--bg2);color:var(--text)}
 
 
 @media(max-width:600px){.frow.full div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+
+/* ══ COMPACT REPAIR MODAL v21 ══ */
+.compact-repair-modal{
+  max-width:980px!important;
+  padding:18px!important;
+  border-radius:18px!important;
+}
+.compact-repair-modal h3{
+  margin-bottom:14px!important;
+  font-size:20px!important;
+}
+.compact-repair-modal .fg{
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:10px 12px!important;
+}
+.compact-repair-modal .frow{
+  gap:4px!important;
+}
+.compact-repair-modal .frow label{
+  font-size:10px!important;
+  letter-spacing:.35px!important;
+}
+.compact-repair-modal .inp,
+.compact-repair-modal .sel{
+  height:42px!important;
+  padding:8px 12px!important;
+  border-radius:10px!important;
+  font-size:13px!important;
+}
+.compact-repair-modal .area{
+  min-height:58px!important;
+  padding:10px 12px!important;
+  border-radius:10px!important;
+  font-size:13px!important;
+}
+.compact-repair-modal .full{grid-column:1/-1!important}
+.compact-repair-modal .compact-acc{
+  grid-column:1/-1;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));
+  overflow:hidden;
+}
+.compact-repair-modal .compact-acc summary{
+  list-style:none;
+  cursor:pointer;
+  padding:12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:800;
+  color:var(--text);
+  user-select:none;
+}
+.compact-repair-modal .compact-acc summary::-webkit-details-marker{display:none}
+.compact-repair-modal .compact-acc summary:after{
+  content:'⌄';
+  color:var(--text2);
+  font-size:18px;
+  transition:transform .15s;
+}
+.compact-repair-modal .compact-acc[open] summary:after{transform:rotate(180deg)}
+.compact-repair-modal .acc-body{
+  padding:0 12px 12px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px 12px;
+}
+.compact-repair-modal .mfoot{
+  position:sticky;
+  bottom:-18px;
+  background:linear-gradient(180deg,rgba(22,27,37,.85),var(--bg2));
+  margin:14px -18px -18px!important;
+  padding:12px 18px!important;
+  border-top:1px solid var(--border)!important;
+}
+.compact-repair-modal .mfoot .btn{
+  min-width:120px;
+  height:40px;
+}
+@media(max-width:900px){
+  .compact-repair-modal .fg{grid-template-columns:repeat(2,1fr)!important}
+}
+@media(max-width:600px){
+  .compact-repair-modal{padding:14px!important}
+  .compact-repair-modal .fg,
+  .compact-repair-modal .acc-body{grid-template-columns:1fr!important}
+  .compact-repair-modal .mfoot{margin:12px -14px -14px!important;padding:10px 14px!important}
+  .compact-repair-modal .mfoot .btn{min-width:0;flex:1}
+}
+
+
+/* ══ COMPACT REPAIR MODAL MOBILE v22 ══ */
+@media(max-width:600px){
+  .modal-ov{
+    padding:70px 8px 92px!important;
+    align-items:flex-start!important;
+  }
+  .compact-repair-modal{
+    width:100%!important;
+    max-width:100%!important;
+    padding:12px!important;
+    border-radius:16px!important;
+  }
+  .compact-repair-modal h3{
+    font-size:18px!important;
+    margin-bottom:12px!important;
+    align-items:flex-start!important;
+  }
+  .compact-repair-modal h3 span[style*="Компактний"]{
+    display:none!important;
+  }
+  .compact-repair-modal .fg{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+  .compact-repair-modal .frow label{
+    font-size:10px!important;
+    margin-bottom:2px!important;
+  }
+  .compact-repair-modal .inp,
+  .compact-repair-modal .sel{
+    height:40px!important;
+    min-height:40px!important;
+    padding:7px 10px!important;
+    font-size:14px!important;
+    border-radius:10px!important;
+  }
+  .compact-repair-modal .area{
+    min-height:54px!important;
+    max-height:90px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    border-radius:10px!important;
+  }
+  .compact-repair-modal .compact-acc{
+    border-radius:12px!important;
+    margin-top:2px!important;
+  }
+  .compact-repair-modal .compact-acc summary{
+    padding:11px 12px!important;
+    font-size:13px!important;
+  }
+  .compact-repair-modal .compact-acc summary span{
+    display:block!important;
+    margin-left:0!important;
+    margin-top:2px!important;
+    font-size:11px!important;
+  }
+  .compact-repair-modal .acc-body{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding:0 10px 10px!important;
+  }
+  .compact-repair-modal .mfoot{
+    position:sticky!important;
+    bottom:-12px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    margin:10px -12px -12px!important;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
+    background:rgba(15,17,23,.98)!important;
+    backdrop-filter:blur(14px)!important;
+    z-index:20!important;
+  }
+  .compact-repair-modal .mfoot .btn{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    font-size:13px!important;
+  }
+  .compact-repair-modal .mfoot .btn.orange{
+    grid-column:1/-1!important;
+    order:-1!important;
+  }
+}
+@media(max-width:390px){
+  .compact-repair-modal .inp,
+  .compact-repair-modal .sel,
+  .compact-repair-modal .area{
+    font-size:13px!important;
+  }
+  .compact-repair-modal h3{
+    font-size:17px!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1376,48 +1566,109 @@ async function delComment(id){
 }
 
 // ── EDIT/NEW ──
-function openNew(){editId=null;showModal({date_in:new Date().toISOString().slice(0,10),status:'На діагностиці',pay_status:'Не оплачено'});}
+function openNew(){editId=null;showModal({date_in:new Date().toISOString().slice(0,10),phone:'+380',status:'На діагностиці',pay_status:'Не оплачено'});}
 function openEdit(id){editId=id;showModal(repairs.find(x=>x.id===id));}
 function showModal(d){
+  d = d || {};
+  if(!d.phone) d.phone = '+380';
   const mOpts=masters.map(m=>`<option ${d.master===m.name?'selected':''}>${m.name}</option>`).join('');
   const html=`<div class="modal-ov" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-      <h3>${editId?'Редагування':'Новий ремонт'} ${editId?`<span class="mid">${editId}</span>`:''}</h3>
+    <div class="modal compact-repair-modal">
+      <h3>${editId?'Редагування':'Новий ремонт'} ${editId?`<span class="mid">${editId}</span>`:''}<span style="margin-left:auto;color:var(--orange);font-size:12px;border:1px solid rgba(249,115,22,.5);padding:6px 10px;border-radius:10px">Компактний вигляд</span></h3>
+
       <div class="fg">
         <div class="frow"><label>Дата прийому</label><input class="inp" type="date" id="f-date_in" value="${d.date_in||''}"/></div>
         <div class="frow"><label>Дата видачі</label><input class="inp" type="date" id="f-date_out" value="${d.date_out||''}"/></div>
-        <div class="frow"><label>ПІБ клієнта</label><input class="inp" id="f-client" value="${d.client||''}"/></div>
-        <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" value="${d.phone||''}"/></div>
-        <div class="frow"><label>Тип пристрою</label>
-          <select class="sel" id="f-type">${['iPhone','Samsung','iPad','MacBook','Ноутбук','Планшет','Watch','AirPods','Інше'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select>
-        </div>
-        <div class="frow"><label>Модель</label><input class="inp" id="f-model" value="${d.model||''}"/></div>
-        <div class="frow"><label>IMEI / Серійний</label><input class="inp" id="f-serial" value="${d.serial||''}"/></div>
-        <div class="frow"><label>Пароль пристрою</label><input class="inp" id="f-password" value="${d.password||''}"/></div>
-        <div class="frow"><label>Комплектація</label><input class="inp" id="f-kit" value="${d.kit||''}"/></div>
-        <div class="frow full"><label>Опис несправності</label><textarea class="area" id="f-problem">${d.problem||''}</textarea></div>
-        <div class="frow"><label>Зовнішній стан</label>
-          <select class="sel" id="f-condition">${['','Новий','Добрий','Задовільний','Поганий'].map(s=>`<option ${d.condition===s?'selected':''}>${s}</option>`).join('')}</select>
-        </div>
         <div class="frow"><label>Статус</label>
           <select class="sel" id="f-status">${STATUSES.map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('')}</select>
         </div>
+
+        <div class="frow"><label>ПІБ клієнта</label><input class="inp" id="f-client" value="${d.client||''}"/></div>
+        <div class="frow"><label>Телефон</label><input class="inp" id="f-phone" type="tel" maxlength="13" value="${d.phone||'+380'}" onfocus="ensurePhonePrefix(this)" oninput="ensurePhonePrefix(this)"/></div>
+        <div class="frow"><label>Тип пристрою</label>
+          <select class="sel" id="f-type">${['iPhone','Samsung','iPad','MacBook','Ноутбук','Планшет','Watch','AirPods','Інше'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+
+        <div class="frow"><label>Модель</label><input class="inp" id="f-model" value="${d.model||''}"/></div>
+        <div class="frow"><label>IMEI / Серійний</label><input class="inp" id="f-serial" value="${d.serial||''}"/></div>
+        <div class="frow"><label>Пароль пристрою</label><input class="inp" id="f-password" value="${d.password||''}"/></div>
+
         <div class="frow"><label>Майстер</label><select class="sel" id="f-master"><option value="">—</option>${mOpts}</select></div>
-        <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}"/></div>
-        <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}"/></div>
-        <div class="frow full"><label>Оплата</label>
+        <div class="frow"><label>Зовнішній стан</label>
+          <select class="sel" id="f-condition">${['','Новий','Добрий','Задовільний','Поганий'].map(s=>`<option ${d.condition===s?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+        <div class="frow"><label>Оплата</label>
           <select class="sel" id="f-payment_combo">${paymentComboOptions(d.pay_status||'Не оплачено', d.pay_method||'')}</select>
         </div>
-        <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes" style="min-height:44px">${d.internal_notes||''}</textarea></div>
-        <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes" style="min-height:44px">${d.notes||''}</textarea></div>
+
+        <div class="frow full"><label>Опис несправності</label><textarea class="area" id="f-problem" placeholder="Коротко опишіть несправність...">${d.problem||''}</textarea></div>
+
+        <details class="compact-acc">
+          <summary>📋 Додатково <span style="font-weight:600;color:var(--text2);font-size:12px;margin-left:6px">комплектація, нотатки, внутрішня інформація</span></summary>
+          <div class="acc-body">
+            <div class="frow full"><label>Комплектація</label><input class="inp" id="f-kit" value="${d.kit||''}"/></div>
+            <div class="frow full"><label>Нотатки майстра (внутрішні)</label><textarea class="area" id="f-internal_notes">${d.internal_notes||''}</textarea></div>
+            <div class="frow full"><label>Нотатки (публічні)</label><textarea class="area" id="f-notes">${d.notes||''}</textarea></div>
+          </div>
+        </details>
+
+        <details class="compact-acc" open>
+          <summary>💰 Фінанси</summary>
+          <div class="acc-body">
+            <div class="frow"><label>Додаткова собівартість (₴)</label><input class="inp" type="number" id="f-cost" value="${d.additional_cost ?? d.cost ?? ''}" placeholder="0.00"/></div>
+            <div class="frow"><label>Ціна клієнту (₴)</label><input class="inp" type="number" id="f-price" value="${d.price||''}" placeholder="0.00"/></div>
+          </div>
+        </details>
+
+        <details class="compact-acc">
+          <summary>🛠 Запчастини та роботи</summary>
+          <div class="acc-body">
+            <div class="frow full" style="color:var(--text2);font-weight:600">Запчастини додаються у повній картці ремонту після створення замовлення.</div>
+          </div>
+        </details>
       </div>
+
       <div class="mfoot">
         <button class="btn" onclick="closeModal()">Скасувати</button>
-        <button class="btn blue" onclick="saveRepair()">Зберегти</button>
+        ${editId?`<button class="btn" onclick="printAct('${editId}')">🖨 Друк</button>`:''}
+        <button class="btn orange" onclick="saveRepair()">💾 Зберегти</button>
       </div>
     </div>
   </div>`;
   const mr=document.getElementById('modal-r');if(mr)mr.innerHTML=html;
+  setTimeout(()=>initPhonePrefix(),0);
+}
+
+function ensurePhonePrefix(input){
+  if(!input) return;
+  let digits = String(input.value || '').replace(/\D/g,'');
+  if(digits.startsWith('380')) digits = digits.slice(3);
+  if(digits.startsWith('0')) digits = digits.slice(1);
+  digits = digits.slice(0,9);
+  input.value = '+380' + digits;
+}
+
+function initPhonePrefix(){
+  const input=document.getElementById('f-phone');
+  if(!input) return;
+  if(!input.value) input.value='+380';
+  ensurePhonePrefix(input);
+
+  input.addEventListener('keydown',function(e){
+    if((e.key==='Backspace' || e.key==='Delete') && this.selectionStart<=4){
+      e.preventDefault();
+      this.setSelectionRange(4,4);
+    }
+  });
+
+  input.addEventListener('click',function(){
+    if(this.selectionStart<4) this.setSelectionRange(4,4);
+  });
+
+  input.addEventListener('focus',function(){
+    if(!this.value) this.value='+380';
+    if(this.selectionStart<4) this.setSelectionRange(4,4);
+  });
 }
 function closeModal(){const m=document.getElementById('modal-r');if(m)m.innerHTML='';}
 const gv=id=>{const e=document.getElementById(id);return e?e.value:'';};
