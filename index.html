@@ -1806,27 +1806,32 @@ function renderReminders(){
 // ════════════════════════════════
 
 
+
 let clientSearchQ = '';
 let clientDeviceFilter = '';
 
-function renderClients(){
+function clientMatchesDevice(c){
   const norm = v => String(v || '').toLowerCase().trim();
+  const d = norm(clientDeviceFilter);
+  if(!d) return true;
 
-  const filteredClients = (clients || []).filter(c => {
-    const q = norm(clientSearchQ);
-    const d = norm(clientDeviceFilter);
-
-    const clientText = norm(`${c.client || ''} ${c.phone || ''}`);
-    const searchOk = !q || clientText.includes(q);
-
-    const deviceOk = !d || (allRepairs || []).some(r => {
-      if(String(r.phone || '') !== String(c.phone || '')) return false;
-      const devText = norm(`${r.type || ''} ${r.model || ''}`);
-      return devText.includes(d);
-    });
-
-    return searchOk && deviceOk;
+  return (allRepairs || []).some(r => {
+    if(String(r.phone || '') !== String(c.phone || '')) return false;
+    const devText = norm(`${r.type || ''} ${r.model || ''}`);
+    return devText.includes(d);
   });
+}
+
+function applyClientSearchFilter(){
+  const q = String(clientSearchQ || '').toLowerCase().trim();
+  document.querySelectorAll('.client-card').forEach(card => {
+    const txt = card.innerText.toLowerCase();
+    card.style.display = (!q || txt.includes(q)) ? '' : 'none';
+  });
+}
+
+function renderClients(){
+  const filteredClients = (clients || []).filter(clientMatchesDevice);
 
   const rows = filteredClients.length ? filteredClients.map(c => `
     <div class="client-card" onclick="openClientDetail('${encodeURIComponent(c.phone)}','${String(c.client || '').replace(/'/g,"\\'")}')">
@@ -1848,6 +1853,8 @@ function renderClients(){
       </div>
     </div>`).join('') : `<div style="text-align:center;padding:40px;color:var(--text3)">Клієнтів не знайдено</div>`;
 
+  setTimeout(applyClientSearchFilter, 0);
+
   return`
   <div class="toolbar" style="align-items:center">
     <input
@@ -1855,7 +1862,7 @@ function renderClients(){
       style="width:260px"
       placeholder="Пошук клієнта або телефону..."
       value="${clientSearchQ || ''}"
-      oninput="clientSearchQ=this.value;render()"
+      oninput="clientSearchQ=this.value;applyClientSearchFilter()"
       autocomplete="off"
     />
     <select
