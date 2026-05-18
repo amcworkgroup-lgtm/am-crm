@@ -1827,19 +1827,27 @@ function renderClients(){
 
   return`
   <div class="toolbar">
-    <input class="inp" style="width:260px" placeholder="Пошук клієнта або телефону...">
-<select id="client-device-filter" class="sel" onchange="clientDeviceFilter=this.value;renderClientsFixed()">
-<option value="">Всі пристрої</option>
-<option value="iphone">iPhone</option>
-<option value="macbook">MacBook</option>
-<option value="ipad">iPad</option>
-<option value="samsung">Samsung</option>
-<option value="watch">Watch</option>
-<option value="airpods">AirPods</option>
-<option value="інше">Інше</option>
+    <input id="client-search-input" class="inp" placeholder="Пошук клієнта або телефону..." value="" />
+<select id="client-device-filter" class="sel">
+  <option value="">Всі пристрої</option>
+  <option value="iphone">iPhone</option>
+  <option value="macbook">MacBook</option>
+  <option value="ipad">iPad</option>
+  <option value="samsung">Samsung</option>
+  <option value="watch">Watch</option>
+  <option value="airpods">AirPods</option>
+  <option value="інше">Інше</option>
 </select>
- oninput="loadClients(this.value).then(render)"/>
-  </div>
+<select id="client-device-filter" class="sel">
+  <option value="">Всі пристрої</option>
+  <option value="iphone">iPhone</option>
+  <option value="macbook">MacBook</option>
+  <option value="ipad">iPad</option>
+  <option value="samsung">Samsung</option>
+  <option value="watch">Watch</option>
+  <option value="airpods">AirPods</option>
+  <option value="інше">Інше</option>
+</select>
   <div>${rows}</div>
   <div id="modal-r"></div>`;
 }
@@ -2963,23 +2971,45 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 
-<script id="client-device-filter-v25">
-let clientDeviceFilter='';
+<script id="client-search-device-filter-v26">
+window.clientSearchQ = window.clientSearchQ || '';
+window.clientDeviceFilter = window.clientDeviceFilter || '';
 
-function renderClientsFixed(){
-  const cards = document.querySelectorAll('.client-card');
+function applyClientFilters(){
   const q = String(window.clientSearchQ || '').trim().toLowerCase();
-  const device = String(clientDeviceFilter || '').trim().toLowerCase();
+  const device = String(window.clientDeviceFilter || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('.client-card');
 
   cards.forEach(card => {
     const text = card.innerText.toLowerCase();
-
-    const matchSearch = !q || text.includes(q);
-    const matchDevice = !device || text.includes(device);
-
-    card.style.display = (matchSearch && matchDevice) ? '' : 'none';
+    const okSearch = !q || text.includes(q);
+    const okDevice = !device || text.includes(device);
+    card.style.display = (okSearch && okDevice) ? '' : 'none';
   });
 }
+
+document.addEventListener('input', function(e){
+  const el = e.target;
+  if(el && el.id === 'client-search-input'){
+    window.clientSearchQ = el.value || '';
+    applyClientFilters();
+  }
+});
+
+document.addEventListener('change', function(e){
+  const el = e.target;
+  if(el && el.id === 'client-device-filter'){
+    window.clientDeviceFilter = el.value || '';
+    applyClientFilters();
+  }
+});
+
+const oldRenderClients = window.renderClients;
+window.renderClients = function(){
+  const html = oldRenderClients ? oldRenderClients.apply(this, arguments) : '';
+  setTimeout(applyClientFilters, 50);
+  return html;
+};
 </script>
 
 </body>
